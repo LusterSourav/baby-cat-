@@ -178,7 +178,6 @@ header.cracking .bmr{animation:bmcrackR .1s linear forwards}
 </g></svg>
 <p id="voice__status" class="voice__status"></p>
 <p id="voice__echo" class="voice__echo"></p>
-<p id="bigear" class="skip" style="display:none;margin-top:6px">load big ear — clearer, one-time 257MB</p>
 <p id="loader__cta" class="skip">skip to mountains →</p>
 </div>
 </div></div>
@@ -472,18 +471,27 @@ function say(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtter
 const MONTHS={january:1,jan:1,february:2,feb:2,march:3,mar:3,april:4,apr:4,may:5,june:6,jun:6,july:7,jul:7,august:8,aug:8,september:9,sept:9,sep:9,october:10,oct:10,november:11,nov:11,december:12,dec:12};
 const CITIES={'kolkata':5.5,'calcutta':5.5,'mumbai':5.5,'bombay':5.5,'delhi':5.5,'new delhi':5.5,'chennai':5.5,'madras':5.5,'bengaluru':5.5,'bangalore':5.5,'hyderabad':5.5,'ahmedabad':5.5,'pune':5.5,'jaipur':5.5,'lucknow':5.5,'kanpur':5.5,'patna':5.5,'varanasi':5.5,'kathmandu':5.75,'dhaka':6,'dacca':6,'colombo':5.5,'karachi':5,'dubai':4,'london':0,'new york':-5,'chicago':-6,'los angeles':-8,'toronto':-5,'sydney':10,'singapore':8,'kuala lumpur':8,'bangkok':7,'hong kong':8,'hongkong':8,'tokyo':9};
 function parseDetails(text){const f={name:null,dob:null,time:null,place:null,tz:null};if(!text)return f;
-const low=' '+text.toLowerCase().replace(/[,?.!]/g,' ')+' ';
+const low=' '+text.toLowerCase().replace(/(\d)\.(\d)/g,'$1<DOT>$2').replace(/[,?.!]/g,' ').replace(/<DOT>/g,'.')+' ';
 let m=low.match(/(?:my name is|i am|this is|call me)\s+([a-z ]+?)(?=\s+(?:born|birth|date|time|at|on|in|$))/);
 if(m&&m[1].trim())f.name=cap(m[1].trim().split(/\s+/).slice(0,3).join(' '));
 m=low.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\s+(\d{4})/);
 if(m){f.dob={d:+m[1],m:MONTHS[m[2].slice(0,3)],y:+m[3]};}
 else{m=low.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
 if(m){let y=+m[3];if(y<100)y=y>30?1900+y:2000+y;f.dob={d:+m[1],m:+m[2],y};}}
-m=low.match(/(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night|o\s*clock)/);
-if(m){let h=+m[1],min=m[2]?+m[2]:0;const mark=m[3].replace(/\./g,'');
+m=null;{const tre=/(\d{1,2})(?:(?::|\.|\-)(\d{2})| (\d{2})(?=\s))?\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night)/g;
+let tm=null,mm=null;
+while((mm=tre.exec(low))){if(mm.index>0&&/\d/.test(low[mm.index-1]))continue;
+const raw4=(mm[0].match(/^\d{4}/)||[])[0];if(raw4&&+raw4>=1900)continue;
+let h=+mm[1],min=+(mm[2]||mm[3]||0);const mark=(mm[4]||'').replace(/\./g,'');const h0=h;
 let ap=null;if(mark[0]==='a'||mark.includes('morning'))ap='AM';else if(mark[0]==='p'||mark.includes('evening')||mark.includes('night'))ap='PM';
 if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h<12)h+=12;
-f.time={h,min,ap};}
+if(h0>=1&&ap&&!(ap==='AM'&&h0>12)&&min<=59){tm={h,min,ap};break;}}
+if(tm)f.time=tm;}
+if(!f.time){const b=low.match(/(?:^|[^\d])(\d{3,4})\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night)/);
+if(b){const n=+b[1];if(n<=1259){let h=Math.floor(n/100),min=n%100;const mark=b[2].replace(/\./g,'');const h0=h;
+let ap=null;if(mark[0]==='a'||mark.includes('morning'))ap='AM';else ap='PM';
+if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h<12)h+=12;
+if(h0>=1&&!(ap==='AM'&&h0>12)&&min<=59)f.time={h,min,ap};}}}
 const keys=Object.keys(CITIES).sort((a,b)=>b.length-a.length);
 for(const k of keys){if(low.includes(' '+k+' ')||low.includes(' '+k+'s ')){f.place=cap(k);f.tz=CITIES[k];f.tzKey=k;break;}}
 return f;}
@@ -540,7 +548,7 @@ const edge=Math.min(frac,1-frac)*SPAN; // deg to nearest cusp
 return{nak:NAK[nakIdx][0],lord:NAK[nakIdx][1],nakIdx,pada,rashi:RASHI[Math.floor(sid/30)],borderline:edge<1.0,sid:+sid.toFixed(2),tz:effTz};}
 if(typeof window!=='undefined')window.BIGCATastro={parseDetails,missing,computeProfile,prepAudio,dstOffset,NAKSHATRAS:NAK,CITIES};
 // ---------- voice state machine ----------
-let transcriber=null,recording=false,mediaRec=null,chunks=[],fields=null,busy=false,whisperDead=false,whisperWhy='',recTimer=null,whisperSize='tiny';
+let transcriber=null,recording=false,mediaRec=null,chunks=[],fields=null,busy=false,whisperDead=false,whisperWhy='',recTimer=null,whisperSize='small';
 const WHISPER_MODELS={tiny:'Xenova/whisper-tiny.en',base:'Xenova/whisper-base.en',small:'Xenova/whisper-small.en'};
 async function ensureWhisper(){if(transcriber)return transcriber;
 if(whisperDead)throw new Error(whisperWhy||'voice model unavailable');
@@ -557,7 +565,7 @@ transcriber={processor,tokenizer,model,id};
 }catch(e){throw new Error('stage failed ('+id+'): '+String((e&&e.message)||e).slice(0,180));}
 if(!window.BIGCATvoiceReady){window.BIGCATvoiceReady=true;setStatus('Voice ready (on-device) — tap any mic and speak.');showBigEar();}
 return transcriber;}
-function showBigEar(){const b=$('bigear');if(b)b.style.display=(whisperSize==='tiny')?'block':'none';}
+function showBigEar(){}
 function prepAudio(buf){
 const c0=buf.getChannelData(0),c1=buf.numberOfChannels>1?buf.getChannelData(1):null;
 const sr=buf.sampleRate,n=c0.length,mono=new Float32Array(n);
@@ -701,16 +709,6 @@ if(busy){setStatus('Working… one moment.');return;}
 if(recording){stopListen();setStatus('Heard that one — tap mic again for this card.');return;}
 utterTarget=b.dataset.field;startListen(b);}));
 paintCards();
-const bigearBtn=$('bigear');
-if(bigearBtn)bigearBtn.addEventListener('click',async()=>{if(busy)return;busy=true;
-whisperSize='small';transcriber=null;window.BIGCATvoiceReady=false;bigearBtn.style.display='none';
-try{const probe=await fetch('models/Xenova/whisper-small.en/onnx/decoder_model_merged_quantized.onnx',{method:'HEAD'});
-if(!probe.ok)throw new Error('absent');}catch(e){whisperSize='tiny';
-setStatus('Big ear isn\u2019t hosted here — tiny stays on duty.');busy=false;return;}
-setStatus('Loading big ear…');say('Loading the big ear.');
-try{await ensureWhisper();}catch(e){whisperSize='tiny';transcriber=null;
-setStatus('Big ear failed ('+String((e&&e.message)||e).slice(0,120)+') — staying on tiny.');}
-busy=false;});
 // preload voice model on page load so failure surfaces early with the real reason
 async function preloadVoice(){try{await ensureWhisper();}
 catch(e){whisperDead=true;whisperWhy=String((e&&e.message)||e).slice(0,120);
