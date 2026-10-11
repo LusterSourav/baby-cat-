@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIG CAT — Interactive Star</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&display=swap" rel="stylesheet">
+<style>
+*{user-select:none;-webkit-user-select:none;box-sizing:border-box}
+html,body{
+cursor:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAMAAAAM7l6QAAAASFBMVEUAAAD7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/uiAKvrAAAAGHRSTlMATixLlBAvG51CBa8yHaWPIhJ4qH13IUi1PrbwAAAAn0lEQVQoz9VSSQrEMAyrEzf73mX+/9OhA0PtNJBzdYpQELal5R1YTxGCONexKOAw3psDxOCDthkhOhcBs9UPVSb5f8tNdvpqk7qZSpb7qywplVlRWgG5G0IlrDTgMrRCmDCxm9QIwoJ3XHY+0Mm2p8zMu0UjMy97P9peJotNzjI9Ko/kwyPhiBYR9C9QtHFYh3bVoZE6MNRylanU5RX4AuV4BXewV0+ZAAAAAElFTkSuQmCC") 15 15,pointer;
+height:100%;overflow:hidden;background:#000;margin:0}
+#wrapper{opacity:1;background:#000;position:absolute;top:0;left:0;width:100%;height:100%}
+h1{font-family:"Caveat Brush",cursive}
+canvas{opacity:1;background:#000;display:block;width:100%;height:100%}
+#stars{position:absolute;top:0;left:0;width:100%;height:58vh;background:transparent;opacity:1;pointer-events:none;z-index:5;display:block}
+#stars.full{height:100vh}
+#canvas.hidden{display:none}
+.loader{width:100%;height:100%;position:absolute;top:0;left:0;right:0;bottom:0;margin:auto;color:#fff;text-align:center;display:table;user-select:none;background:transparent;z-index:20;transition:opacity 2s ease}
+.loader--out{opacity:0;pointer-events:none}
+.loader__content{display:table-cell;vertical-align:middle;padding:20px}
+.bform{width:400px;max-width:92vw;margin:0 auto;position:relative}
+.bform header{position:relative;z-index:6;background:#fff;padding:20px 40px;border-radius:15px 15px 0 0;text-align:left;overflow:hidden}
+.bform header h1{font-family:"Caveat Brush",cursive;font-weight:400;letter-spacing:.5px;color:#111;font-size:30px;margin:0}
+.bform header p{color:#9f9f9f;font-size:19px;margin:5px 0 0;font-family:"Caveat Brush",cursive}
+.bform form{position:relative;height:75px;min-height:112px}
+.bform .input-section{width:100%;position:absolute;display:flex;left:50%;transform:translate(-50%,0);height:75px;border-radius:0 0 15px 15px;overflow:hidden;z-index:5;background:rgba(12,12,12,.92);border:1px solid #333;border-top:none;box-shadow:0 0 100px rgba(0,0,0,.5);transition:all .25s ease-in}
+.bform .input-section.folded{width:95%;margin-top:10px;z-index:4;background:#1a1a1a}
+.bform .input-section.folded + .folded{width:90%;margin-top:20px;z-index:3;background:#141414}
+.bform .input-section.folded + .folded + .folded{width:85%;margin-top:30px;z-index:2}
+.bform .input-section.fold-up{margin-top:-75px}
+.bform .input-section input{flex:1;background:transparent;color:#fff;border:0;padding:20px 0 20px 40px;margin:0;font-size:19px;letter-spacing:.5px;user-select:text;-webkit-user-select:text;cursor:text;font-family:"Caveat Brush",cursive;min-width:0}
+.bform .input-section input:focus{outline:none}
+.bform .input-section input::placeholder{color:#8a8a8a;font-weight:100}
+.bform .card-btns{display:flex;align-items:center;gap:4px;padding-right:14px}
+.bform .card-btns button{background:none;border:1px solid #555;color:#fff;border-radius:8px;min-width:38px;height:38px;font-size:16px;cursor:pointer;transition:all .2s}
+.bform .card-btns button:hover{background:#fff;color:#000;border-color:#fff}
+.bform .card-btns button svg{width:18px;height:18px;display:block;flex:none}
+.bform .card-btns button{display:flex;align-items:center;justify-content:center}
+.bform .card-btns button.next{border-color:#fff}
+.bform .card-btns button.ampm{font-size:11px;letter-spacing:1px;opacity:.55}
+.bform .card-btns button.ampm.on{background:#fff;color:#000;opacity:1}
+.bform .card-btns button.mic.rec{border-color:#f66;color:#f66;animation:micpulse 1s infinite}
+@keyframes micpulse{50%{opacity:.45}}
+.bform .success{width:100%;position:absolute;display:flex;align-items:center;left:50%;transform:translate(-50%,0);height:75px;border-radius:0 0 15px 15px;overflow:hidden;z-index:5;background:#fff;margin-top:0;transition:all .25s ease-in}
+.bform .success.folded{width:90%;margin-top:20px;z-index:1;background:#222}
+.bform .success p{color:#000;font-weight:400;letter-spacing:1px;font-size:24px;width:100%;text-align:center;font-family:"Caveat Brush",cursive}
+.skip{margin-top:20px;font-family:"Caveat Brush",cursive;font-size:17px;color:rgba(255,255,255,.45);cursor:pointer}
+.skip:hover{color:#fff}
+/* glass-crack cinematic over the card stack (pure CSS, no deps) */
+.bform.crack-intro{animation:bm-scale 3s linear forwards,bm-blur .142s linear 14 alternate-reverse,bm-quiver .1s ease-in 10 alternate-reverse,bm-shake .05s ease-in 20 alternate-reverse;transform-origin:center}
+.bform.mini-shake{animation:bm-jolt .15s ease-in 2 alternate-reverse}
+@keyframes bm-scale{to{scale:1.04}}
+@keyframes bm-blur{to{filter:blur(.6px)}}
+@keyframes bm-quiver{to{translate:0 -1px}}
+@keyframes bm-shake{to{translate:0 -3px}}
+@keyframes bm-jolt{to{translate:1px -2px}}
+#bm-crack{position:absolute;inset:0;width:100%;height:100%;z-index:30;pointer-events:none;opacity:0}
+#bm-crack .draw{stroke-dasharray:100;stroke-dashoffset:100}
+#loader.cracking #bm-crack,#loader.cracking #bm-crack-g{animation:crackshow .8s ease forwards}
+#loader.cracking #bm-crack .draw{animation:crackdraw .12s linear forwards}
+@keyframes crackshow{0%{opacity:0}12%{opacity:1}55%{opacity:1}100%{opacity:0}}
+@keyframes crackdraw{to{stroke-dashoffset:0}}
+/* glass-crack 3-piece title split (left / middle / right) */
+.bm-title{position:relative}
+.bm{display:block}
+.bml,.bmr{position:absolute;inset:0}
+header.cracking .bml{animation:bmcrackL .1s linear forwards}
+header.cracking .bmm{animation:bmcrackM .1s linear forwards}
+header.cracking .bmr{animation:bmcrackR .1s linear forwards}
+@keyframes bmcrackL{to{clip-path:polygon(-6% -6%,40% -6%,31% 28%,37% 55%,29% 80%,33% 106%,-6% 106%);translate:-3px 1px}}
+@keyframes bmcrackM{to{clip-path:polygon(40% -6%,64% -6%,58% 30%,63% 60%,56% 106%,33% 106%,29% 80%,37% 55%,31% 28%)}}
+@keyframes bmcrackR{to{clip-path:polygon(64% -6%,106% -6%,106% 106%,56% 106%,63% 60%,58% 30%);translate:3px -1px}}
+.bform.crack-intro header h1{animation:bm-hblur .142s linear 14 alternate-reverse}
+@keyframes bm-hblur{to{filter:blur(.8px)}}
+@media (prefers-reduced-motion:reduce){.bform.crack-intro,.bform.mini-shake{animation:none}#bm-crack{display:none}}
+.voice__status{font-family:"Caveat Brush",cursive;font-size:1.05em;opacity:.7;min-height:1.2em;margin:.6em 0 0}
+.voice__echo{font-family:"Caveat Brush",cursive;font-size:1.05em;opacity:.9;font-style:italic;max-width:400px;margin:.3em auto 0}
+#result{position:absolute;left:12px;bottom:10px;z-index:12;color:rgba(255,255,255,.78);font-family:"Caveat Brush",cursive;font-size:15px;text-align:left;display:none;line-height:1.7;max-width:44vw}
+.controls{position:absolute;top:5px;left:10px;display:none;z-index:15}
+.controls__open{width:25px;height:25px;background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyAQMAAAAk8RryAAAABlBMVEUAAAD///+l2Z/dAAAAAXRSTlMAQObYZgAAABRJREFUGNNjoBv4DwQHEPSo+VgBAFO/HGnvnD82AAAAAElFTkSuQmCC");background-size:contain;position:absolute;top:15px;left:15px;opacity:.5;cursor:inherit;transition:all .3s linear;display:block}
+.controls__open:hover{opacity:1}
+.note{position:absolute;right:10px;bottom:5px;opacity:0;text-align:right;color:rgba(255,255,255,.6);font-family:"Caveat Brush",cursive;font-size:15px;z-index:10;transition:opacity 2s ease}
+.note a{color:rgba(255,255,255,.8)}
+.drawer{position:fixed;top:0;left:0;bottom:0;width:280px;max-width:85vw;background:#111;color:#aaa;z-index:30;transform:translateX(-102%);transition:transform .35s ease;font-family:"Caveat Brush",cursive;overflow-y:auto;box-shadow:2px 0 20px rgba(0,0,0,.6)}
+.drawer.open{transform:translateX(0)}
+.drawer__bar{padding:20px 15px}
+.drawer h1{font-size:24px;font-family:"Caveat Brush",cursive;font-weight:400;border-left:3px solid #fff;padding-left:10px;color:#fff;margin:0 0 10px}
+.drawer ul{list-style:none;margin:0 0 40px;padding:0}
+.drawer li{border-top:1px solid rgba(255,255,255,.08)}
+.offcanvas__item{padding:12px 10px;margin:0;position:relative;cursor:inherit}
+.offcanvas__item:hover{color:#fff;background:rgba(255,255,255,.05)}
+.switch{width:6px;height:6px;border-radius:50%;position:absolute;top:0;bottom:0;right:10px;margin:auto;border:1px solid grey}
+.switch--on{background:grey}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
+.scrim.show{opacity:1;pointer-events:auto}
+.drawer__close{background:none;border:none;color:#aaa;font-size:22px;position:absolute;top:10px;right:12px;cursor:inherit}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="wrapper" class="wrapper">
+<canvas id="canvas"></canvas>
+<canvas id="stars"></canvas>
+<div id="drawer" class="drawer"><div class="drawer__bar">
+<button class="drawer__close" id="drawer__close" aria-label="Close">×</button>
+<h1>Options</h1>
+<ul>
+<li><div id="controls__reset" class="offcanvas__item">Reset</div></li>
+<li><div id="controls__mute" class="offcanvas__item">Mute <span class="switch"></span></div></li>
+<li><div id="controls__rimlight" class="offcanvas__item">Rim light <span class="switch"></span></div></li>
+</ul>
+<h1>Animations</h1>
+<ul>
+<li><div id="controls__sinX" class="offcanvas__item">SinX <span class="switch"></span></div></li>
+<li><div id="controls__sinZ" class="offcanvas__item">SinZ <span class="switch"></span></div></li>
+<li><div id="controls__sinXZ" class="offcanvas__item">SinXZ <span class="switch"></span></div></li>
+</ul>
+</div></div>
+<div id="scrim" class="scrim"></div>
+<div id="loader" class="loader"><div class="loader__content">
+<div class="bform">
+<header><h1 class="bm-title"><span class="bm bml">BIG CAT</span><span class="bm bmm">BIG CAT</span><span class="bm bmr">BIG CAT</span></h1><p>Answer four things — mostly by voice</p></header>
+<form id="bform" onsubmit="return false">
+<section class="input-section" data-field="name">
+<input id="f_name" placeholder="TELL ME YOUR NAME" autocomplete="off">
+<div class="card-btns"><button type="button" class="mic" data-field="name" aria-label="Speak name"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="9.3" rx="2.1" ry="1.6" fill="currentColor"/><circle cx="8.9" cy="6.3" r="0.95" fill="currentColor"/><circle cx="12" cy="5.3" r="0.95" fill="currentColor"/><circle cx="15.1" cy="6.3" r="0.95" fill="currentColor"/><rect x="10.9" y="13.6" width="2.2" height="5.6" rx="1.1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 21.2 Q12 18 17.5 21.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><button type="button" class="next" data-field="name" aria-label="Next">→</button></div>
+</section>
+<section class="input-section folded" data-field="dob">
+<input id="f_dob" placeholder="BIRTH DATE — 12 MARCH 1998" autocomplete="off">
+<div class="card-btns"><button type="button" class="mic" data-field="dob" aria-label="Speak date"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="9.3" rx="2.1" ry="1.6" fill="currentColor"/><circle cx="8.9" cy="6.3" r="0.95" fill="currentColor"/><circle cx="12" cy="5.3" r="0.95" fill="currentColor"/><circle cx="15.1" cy="6.3" r="0.95" fill="currentColor"/><rect x="10.9" y="13.6" width="2.2" height="5.6" rx="1.1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 21.2 Q12 18 17.5 21.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><button type="button" class="next" data-field="dob" aria-label="Next">→</button></div>
+</section>
+<section class="input-section folded" data-field="time">
+<input id="f_time" placeholder="TIME — 6:40" autocomplete="off">
+<div class="card-btns"><button type="button" class="ampm" data-ap="AM">AM</button><button type="button" class="ampm" data-ap="PM">PM</button><button type="button" class="mic" data-field="time" aria-label="Speak time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="9.3" rx="2.1" ry="1.6" fill="currentColor"/><circle cx="8.9" cy="6.3" r="0.95" fill="currentColor"/><circle cx="12" cy="5.3" r="0.95" fill="currentColor"/><circle cx="15.1" cy="6.3" r="0.95" fill="currentColor"/><rect x="10.9" y="13.6" width="2.2" height="5.6" rx="1.1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 21.2 Q12 18 17.5 21.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><button type="button" class="next" data-field="time" aria-label="Next">→</button></div>
+</section>
+<section class="input-section folded" data-field="place">
+<input id="f_place" placeholder="BIRTH PLACE — KOLKATA" autocomplete="off">
+<div class="card-btns"><button type="button" class="mic" data-field="place" aria-label="Speak place"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="9.3" rx="2.1" ry="1.6" fill="currentColor"/><circle cx="8.9" cy="6.3" r="0.95" fill="currentColor"/><circle cx="12" cy="5.3" r="0.95" fill="currentColor"/><circle cx="15.1" cy="6.3" r="0.95" fill="currentColor"/><rect x="10.9" y="13.6" width="2.2" height="5.6" rx="1.1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 21.2 Q12 18 17.5 21.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><button type="button" class="next" data-field="place" aria-label="Finish">✈</button></div>
+</section>
+<section class="success folded"><p>STARS ALIGNED</p></section>
+</form>
+<svg id="bm-crack" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<g id="bm-crack-g" opacity="0">
+<path class="draw" pathLength="100" fill="none" stroke="#f2f2f2" stroke-width="0.0967312" d="m 754.07875,539.71842 c -3.69792,-1.31368 -15.15169,-6.14702 -21.19332,-8.79913" />
+<path class="draw" pathLength="100" fill="none" stroke="#ffffff" stroke-width="0.18" d="m 770.76967,547.26354 -16.59358,-7.47881" />
+<path class="draw" pathLength="100" fill="none" stroke="#f2f2f2" stroke-width="0.1" d="m 801.03572,561.39752 c -3.55723,-1.88939 -25.10819,-11.22235 -30.29136,-14.16331" />
+<path class="draw" pathLength="100" fill="none" stroke="#ffffff" d="m 834.1236,576.56477 c 0.051,0.27936 -32.90392,-14.95139 -33.04074,-15.15741" />
+<path class="draw" pathLength="100" fill="none" stroke-width="0.1" d="m 691.4264,517.89975 c -3.55723,-1.88939 -17.25763,-9.75744 -22.4408,-12.6984" />
+<path class="draw" pathLength="100" fill="none" stroke-width="0.18" d="m 707.10399,527.33945 c -3.4553,-2.13201 -10.9408,-6.65111 -16.12397,-9.59207" />
+<path class="draw" pathLength="100" fill="none" stroke-width="0.1" d="m 735.82031,545.8878 c -3.55723,-1.88939 -23.54422,-15.59643 -28.72739,-18.53739" />
+<path class="draw" pathLength="100" fill="none" stroke-width="0.2" d="m 765.45665,562.19213 c -4.98529,-1.67302 -24.45299,-13.25961 -29.63616,-16.20057" />
+<path fill="#1c1c1d" d="m 302.29499,346.47605 14.74937,6.36905 2.07832,1.13972 -6.90539,-1.87715 z" />
+<path fill="#4b4b4d" d="m 320.32524,352.59714 c 0,0 -1.59393,1.46109 -0.66414,1.59392 0.92979,0.13283 5.4459,2.52371 5.4459,2.52371 l -7.70395,-2.65654 -1.59393,-0.39848 3.18785,-0.66413 z" />
+<path fill="#4b4b4d" d="m 320.34177,347.85661 -22.23795,-4.96141 20.77788,5.92399 6.10716,2.85087 z" />
+<path fill="#4b4b4d" d="m 310.45763,350.77606 -8.05758,-4.24532 -2.54819,-2.91583 -6.00873,-2.89408 5.97321,5.91631 3.36643,2.37995 z" />
+<path fill="#4b4b4d" d="m 302.33657,345.35677 -48.61774,-25.47678 c 15.5092,5.86637 32.95372,14.8152 47.09668,23.34591 z" />
+<path fill="#232324" d="m 256.4223,326.6213 14.3453,4.78177 -6.37569,2.65654 0.26565,-2.39089 z" />
+<path fill="#232324" d="m 168.95239,279.7704 56.94631,26.53643 -24.97145,-9.69637 z" />
+<path fill="#232324" d="m 154.11139,275.48967 -43.42971,-18.64832 21.40372,7.73193 z" />
+<path fill="#1a1a1a" d="m 525.67718,433.0886 1.92649,1.94934 c -6.69931,-2.02265 -13.43444,-4.4995 -20.04353,-6.89958 l 1.43264,-0.0868 8.84619,2.83915 -11.31911,-6.85096 -0.0331,-0.8176 z m 2.56764,0.46472 -1.31215,1.78177 13.4441,4.10463 -3.16164,-1.69786 -6.22031,-2.68854 z" />
+<path fill="#545b60" d="m 420.01642,391.18253 -3.29962,-1.28008 0.22642,0.13143 1.66871,0.69304 z" />
+<path fill="#434343" d="m 609.63735,471.06695 -1.70408,-0.83903 c -1.05163,0.044 -7.24953,-2.42305 -7.24953,-2.42305 l -15.62258,-8.60946 3.77589,0.54994 4.75,1.875 6.125,2.8125 4.43681,1.5625 c 2.43019,1.74948 3.82784,1.44385 5.45653,4.01363 z" />
+<path fill="#181a19" d="m 566.41129,451.14811 18.67189,8.10237 4.14846,0.42375 -10.40267,-4.65338 -8.33762,-3.21998 -4.42744,-1.55256 z" />
+<path fill="#17171a" d="m 610.255,479.53412 4.10002,-0.10003 2.01033,-0.41946 -2.41564,-1.07902 -3.09475,0.59846 z" />
+<path fill="#191718" d="m 603.51229,486.45302 2.74626,-0.41791 -0.0597,-0.35821 0.95523,-0.65672 -1.55224,-0.95522 -2.44776,0.65672 0.53731,0.71641 z" />
+<path fill="#111111" d="m 579.36303,476.82598 12.26098,4.53673 3.27492,1.11105 1.52028,1.11108 0.81882,-0.70185 -2.57307,-1.69594 -3.45017,-0.70185 -7.05605,-2.54824 z" />
+<path fill="#1f1e21" d="m 609.0893,479.85153 2.74111,1.59669 h 4.93402 l -1.82741,1.50277 6.15228,0.65745 -2.80203,-3.47514 z" />
+<path fill="#161616" d="m 626.16815,487.15399 1.87097,0.0645 4.8387,1.09678 11.73243,5.62997 -0.83871,0.32258 -11.73243,-4.98481 -2.64516,-0.45161 z" />
+<path fill="#2c2c2c" d="m 562.49922,453.78366 c 2.14897,1.84137 6.18477,5.26436 11.50349,8.83272 3.97132,2.66438 9.12807,5.26287 12.20895,8.1382 2.19395,2.04757 6.41582,3.06122 8.56729,4.28424 0.11102,0.8147 3.26698,1.95632 1.06438,1.42435 -0.76281,-0.18423 -7.36564,-1.08376 -8.07536,-1.19811 -0.62819,-0.10123 -3.57144,-2.28489 -3.70017,-2.27325 -2.01056,-0.58669 -10.54818,1.29347 -10.8679,1.26813 -0.39251,-0.42262 -2.55672,-1.04781 -1.05505,-0.8028 l 12.95848,-2.04652 c -5.08679,-4.28527 -16.7963,-11.34973 -23.93754,-17.79484 0.89718,-0.70946 3.17985,-2.20608 3.99219,-2.71418 0.4455,-0.27865 0.60049,0.0633 0.70077,0.0852 0.15378,0.0336 -1.40112,1.13371 -1.26825,1.178 0,0 -1.56768,1.02092 -2.09128,1.61882 z" />
+<path fill="#1a1a1a" d="m 573.26671,474.67327 -18.47744,-7.39767 -2.04838,-0.79262 0.31442,-0.54952 -6.17293,-1.24955 0.35355,-1.14904 4.65344,1.55081 7.47184,1.7041 1.43026,1.63187 8.01859,3.33617 3.21921,1.32449 z" />
+<path fill="#9d9d9d" d="m 561.47498,452.32441 1.08099,0.0537 0.20171,0.47428 -0.39397,0.78153 -1.01917,-0.84016 0.24666,-0.13727 z" />
+<path fill="#9d9d9d" d="m 546.4498,463.39979 0.53131,0.19924 -0.18264,0.66413 -0.23245,-0.5313 z" />
+</g></svg>
+<p id="voice__status" class="voice__status"></p>
+<p id="voice__echo" class="voice__echo"></p>
+<p id="bigear" class="skip" style="display:none;margin-top:6px">load big ear — clearer, one-time 257MB</p>
+<p id="loader__cta" class="skip">skip to mountains →</p>
+</div>
+</div></div>
+<div id="controls" class="controls"><a href="#" id="controls__open" class="controls__open" aria-label="Open options"></a></div>
+<div id="note" class="note">Left click: vertices | Right click: light<br>by Lustersourav</div>
+<div id="result" class="result"></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+// procedural terrain noise (inline, zero deps)
+const Perm=[151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
+const p=new Uint8Array(512); for(let i=0;i<512;i++) p[i]=Perm[i&255];
+function fade(t){return t*t*t*(t*(t*6-15)+10)} function lerp(a,b,t){return a+t*(b-a)}
+function grad(h,x,y,z){h&=15;const u=h<8?x:y,v=h<4?y:(h===12||h===14?x:z);return ((h&1)===0?u:-u)+((h&2)===0?v:-v)}
+function perlin3(x,y,z){const X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255;x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);const u=fade(x),v=fade(y),w=fade(z);const A=p[X]+Y,AA=p[A]+Z,AB=p[A+1]+Z,B=p[X+1]+Y,BA=p[B]+Z,BB=p[B+1]+Z;
+return lerp(lerp(lerp(grad(p[AA],x,y,z),grad(p[BA],x-1,y,z),u),lerp(grad(p[AB],x,y-1,z),grad(p[BB],x-1,y-1,z),u),v),lerp(lerp(grad(p[AA+1],x,y,z-1),grad(p[BA+1],x-1,y,z-1),u),lerp(grad(p[AB+1],x,y-1,z-1),grad(p[BB+1],x-1,y-1,z-1),u),v),w)}
+// tiny tween replacing anime.js
+const easeInOutQuart=t=>t<.5?8*t*t*t*t:1-Math.pow(-2*t+2,4)/2;
+const tweens=new Set();
+function tween(target,props,{duration=2000,easing=easeInOutQuart,update,complete}={}){
+const start={},end={}; for(const k in props){start[k]=target[k];end[k]=props[k];}
+const tw={t0:performance.now(),duration,easing,step(now){const t=Math.min(1,(now-tw.t0)/tw.duration);const e=tw.easing(t);
+for(const k in end) target[k]=start[k]+(end[k]-start[k])*e; if(update)update(); if(t>=1){tweens.delete(tw);if(complete)complete();}}};
+tweens.add(tw); return tw;}
+function tickTweens(now){for(const tw of [...tweens]) tw.step(now);}
+// ---- audio: synth drone + ping replacing dead mp3 hosts ----
+let AC=null,bgGain=null,muted=false;
+function ensureAudio(){if(AC) return; AC=new (window.AudioContext||window.webkitAudioContext)();
+bgGain=AC.createGain(); bgGain.gain.value=0.0; bgGain.connect(AC.destination);
+const filt=AC.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=320; filt.connect(bgGain);
+[[55,'sine',.5],[55.7,'sine',.5],[110.3,'triangle',.18]].forEach(([f,ty,g])=>{const o=AC.createOscillator();o.type=ty;o.frequency.value=f;
+const og=AC.createGain();og.gain.value=g;o.connect(og);og.connect(filt);o.start();});
+const lfo=AC.createOscillator();lfo.frequency.value=.07;const lg=AC.createGain();lg.gain.value=.03;
+lfo.connect(lg);lg.connect(bgGain.gain);lfo.start();}
+function bgOn(){if(!AC)return;bgGain.gain.cancelScheduledValues(AC.currentTime);bgGain.gain.linearRampToValueAtTime(muted?0:.12,AC.currentTime+2);}
+function ping(){if(!AC||muted)return;const o=AC.createOscillator(),g=AC.createGain();o.type='sine';
+o.frequency.setValueAtTime(880,AC.currentTime);o.frequency.exponentialRampToValueAtTime(220,AC.currentTime+.5);
+g.gain.setValueAtTime(.15,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.5);
+o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+.55);}
+// ---- scene ----
+const canvas=document.getElementById('canvas');
+let renderer;
+try{
+renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+}catch(err){const vs=document.getElementById('voice__status');
+if(vs)vs.textContent='WebGL unavailable in this browser.';
+throw err;}
+window.addEventListener('error',e=>{
+if(String(e.message||'').match(/three|importmap|module/i)){
+const vs=document.getElementById('voice__status');
+if(vs)vs.textContent='Failed to load three.js CDN. Check network, then reload.';}},{once:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.01,10000);
+camera.position.set(0,2.3,5.5); camera.position.initY=2.3; camera.position.initZ=8.5;
+scene.add(camera);
+const light1=new THREE.PointLight(0xffffff,60,13,2); light1.position.set(0,1.5,3.0); scene.add(light1);
+const rim=new THREE.PointLight(0xffffff,2,100); rim.position.set(7.6,0,-2.4); rim.visible=false; scene.add(rim);
+// terrain: chunky low-poly ridged peaks (faithful to original JSON look)
+const geo=new THREE.PlaneGeometry(18,10,48,28); geo.rotateX(-Math.PI/2);
+function ridge(x,z){return Math.pow(1-Math.abs(perlin3(x*.55,0,z*.55)),1.5)*1.9+perlin3(x*1.4,5,z*1.4)*.3-0.9;}
+{const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){pos.setY(i,ridge(pos.getX(i),pos.getZ(i)));}pos.needsUpdate=true;geo.computeVertexNormals();}
+const mat=new THREE.MeshPhongMaterial({color:0x1a1a1a,specular:0x333333,shininess:100,transparent:true,side:THREE.DoubleSide,flatShading:true});
+const mesh=new THREE.Mesh(geo,mat); mesh.position.y=-0.4; scene.add(mesh);
+const initY=geo.attributes.position.array.slice();
+let cameraInteractionEnabled=false,verticesShuffles=0;
+const mouse={x:0,y:0}; const AMP=8;
+const LOOK=new THREE.Vector3(0,-0.2,0);
+function updateFOV(fov){tween(camera,{fov},{duration:2000,update:()=>camera.updateProjectionMatrix()});}
+function moveCameraY(y){cameraInteractionEnabled=false;
+tween(camera.position,{y},{duration:2000,complete:()=>{cameraInteractionEnabled=true;camera.position.initY=y;}});}
+const MathAnims={animation:null,i:0,
+run(fn){MathAnims.animation=fn;MathAnims.i=0;fn();},
+sinX(){if(MathAnims.animation!==MathAnims.sinX)return;requestAnimationFrame(MathAnims.sinX);
+const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){pos.setY(i,pos.getY(i)+Math.sin(MathAnims.i/100+pos.getX(i))/100);}pos.needsUpdate=true;geo.computeVertexNormals();MathAnims.i++;},
+sinZ(){if(MathAnims.animation!==MathAnims.sinZ)return;requestAnimationFrame(MathAnims.sinZ);
+const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){pos.setY(i,pos.getY(i)+Math.sin(MathAnims.i/100+pos.getZ(i))/100);}pos.needsUpdate=true;geo.computeVertexNormals();MathAnims.i++;},
+sinXZ(){if(MathAnims.animation!==MathAnims.sinXZ)return;requestAnimationFrame(MathAnims.sinXZ);
+const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){pos.setY(i,Math.sin(MathAnims.i/100+pos.getX(i)*pos.getZ(i))/3);}pos.needsUpdate=true;geo.computeVertexNormals();MathAnims.i++;}};
+function morphTo(targets,dur=2000){const pos=geo.attributes.position;const from=pos.array.slice();
+const tw={t0:performance.now(),duration:dur,easing:easeInOutQuart,step(now){const t=Math.min(1,(now-tw.t0)/tw.duration);const e=tw.easing(t);
+for(let i=0;i<targets.length;i++) pos.array[i]=from[i]+(targets[i]-from[i])*e;pos.needsUpdate=true;geo.computeVertexNormals();
+if(t>=1)tweens.delete(tw);}};tweens.add(tw);}
+function shuffleVertices(){if(MathAnims.animation===null) updateFOV(Math.floor(Math.random()*60)+30);
+verticesShuffles++; if(verticesShuffles>=8){verticesShuffles=0;reset();return;}
+const rX=.1+Math.random(),rY=.1+Math.random(),rZ=.1+Math.random(),rXYZ=.5+Math.random(),h=1+Math.random();
+const pos=geo.attributes.position;const targets=Float32Array.from(pos.array);
+for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+targets[i*3+1]=perlin3(x*rX*rXYZ,y*rY*rXYZ,z*rZ*rXYZ)*h-0.3;}morphTo(targets,2000);}
+function shuffleLight(){
+const c={r:light1.color.r,g:light1.color.g,b:light1.color.b};
+tween(c,{r:.1+Math.random(),g:.1+Math.random(),b:.1+Math.random()},{duration:1000,update:()=>light1.color.setRGB(c.r,c.g,c.b)});
+const rc={r:rim.color.r,g:rim.color.g,b:rim.color.b};
+tween(rc,{r:.1+Math.random(),g:.1+Math.random(),b:.1+Math.random()},{duration:1000,update:()=>rim.color.setRGB(rc.r,rc.g,rc.b)});
+tween(light1.position,{y:Math.random()},{duration:1000});
+const li={v:light1.intensity};const nv=20+Math.random()*100;
+tween(li,{v:nv},{duration:1000,update:()=>light1.intensity=li.v});}
+function reset(){rim.visible=false;setSw('controls__rimlight',false);
+moveCameraY(2.3);updateFOV(45);MathAnims.animation=null;clearWaves();
+morphTo(Float32Array.from(initY),2000);}
+function pulseRim(){if(!rim.visible){setTimeout(pulseRim,2000);return;}tween(rim,{intensity:.2},{duration:4000,complete:()=>{setTimeout(()=>{tween(rim,{intensity:3},{duration:4000,complete:()=>setTimeout(pulseRim,4000)});},0);}});}
+pulseRim();
+addEventListener('bigcat-reveal',()=>{const o={v:light1.intensity};
+tween(o,{v:150},{duration:900,update:()=>{light1.intensity=o.v;},
+complete:()=>{const b={v:light1.intensity};tween(b,{v:60},{duration:1600,update:()=>{light1.intensity=b.v;}});}});});
+function loop(now){tickTweens(now);if(!canvas.classList.contains('hidden')){camera.lookAt(LOOK);renderer.render(scene,camera);}requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+// events
+addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();});
+addEventListener('mousemove',e=>{if(!cameraInteractionEnabled)return;mouse.x=e.clientX;mouse.y=e.clientY;
+light1.position.x=(mouse.x/innerWidth*2-1)*AMP;
+light1.position.z=camera.position.initZ+(mouse.y/innerHeight*2-1)*AMP;
+camera.position.y=camera.position.initY+(mouse.y/innerHeight*2-1)/10;
+camera.position.x=(mouse.x/innerWidth*2-1)/10;});
+canvas.addEventListener('click',()=>{ping();shuffleVertices();});
+canvas.addEventListener('contextmenu',e=>{e.preventDefault();ping();shuffleLight();},false);
+// drawer
+const drawer=document.getElementById('drawer'),scrim=document.getElementById('scrim');
+document.getElementById('controls__open').addEventListener('click',e=>{e.preventDefault();drawer.classList.add('open');scrim.classList.add('show');});
+document.getElementById('drawer__close').onclick=()=>{drawer.classList.remove('open');scrim.classList.remove('show');};
+scrim.onclick=()=>{drawer.classList.remove('open');scrim.classList.remove('show');};
+function setSw(id,on){document.querySelector('#'+id+' span')?.classList.toggle('switch--on',!!on);}
+function clearWaves(){setSw('controls__sinX',false);setSw('controls__sinZ',false);setSw('controls__sinXZ',false);}
+document.getElementById('controls__reset').onclick=reset;
+document.getElementById('controls__mute').onclick=function(){ensureAudio();muted=!muted;
+if(bgGain)bgGain.gain.linearRampToValueAtTime(muted?0:.12,AC.currentTime+.2);setSw('controls__mute',muted);};
+document.getElementById('controls__rimlight').onclick=function(){rim.visible=!rim.visible;setSw('controls__rimlight',rim.visible);};
+document.getElementById('controls__sinX').onclick=()=>{if(MathAnims.animation!==MathAnims.sinX){updateFOV(25);moveCameraY(-5);rim.visible=true;setSw('controls__rimlight',true);clearWaves();setSw('controls__sinX',true);MathAnims.run(MathAnims.sinX);}};
+document.getElementById('controls__sinZ').onclick=()=>{if(MathAnims.animation!==MathAnims.sinZ){updateFOV(25);moveCameraY(5);rim.visible=true;setSw('controls__rimlight',true);clearWaves();setSw('controls__sinZ',true);MathAnims.run(MathAnims.sinZ);}};
+document.getElementById('controls__sinXZ').onclick=()=>{if(MathAnims.animation!==MathAnims.sinXZ){updateFOV(45);moveCameraY(2.3);rim.visible=true;setSw('controls__rimlight',true);clearWaves();setSw('controls__sinXZ',true);MathAnims.run(MathAnims.sinXZ);}};
+// intro: cinematic dolly toward the ridgeline
+document.getElementById('loader__cta').addEventListener('click',()=>{
+ensureAudio();if(AC.state==='suspended')AC.resume();bgOn();
+document.getElementById('controls').style.display='block';
+tween(light1.position,{z:8.5},{duration:3000});tween(camera.position,{z:8.5},{duration:3000});
+setTimeout(()=>{const l=document.getElementById('loader');l.classList.add('loader--out');
+document.getElementById('note').style.opacity=1;cameraInteractionEnabled=true;
+setTimeout(()=>l.style.display='none',2050);},2000);});
+</script>
+<script>
+/* interactive stars: sky-band starfield + mouse trail; mandala mode = personal Nakshatra ring (fullscreen) */
+(()=>{const cv=document.getElementById('stars');if(!cv)return;const ctx=cv.getContext('2d');
+// seeded PRNG — same profile string regrows the identical sky
+function xfnv1a(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const STAR_N=90,MAX_DOTS=120,MAX_DIST=40;let W=0,H=0;const stars=[];let dots=[];let uid=0;
+let mode='sky',mandala=null,seedStr='',birthIdx=0,ringRot=0,reveal=null;
+const RV_FI=800,RV_HOLD=10000,RV_FO=2000,RV_REST=0.35;
+let mx=0,my=0,moving=false,timer=0;const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function resize(){const dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=(mode==='mandala')?innerHeight:Math.floor(innerHeight*.58);
+cv.width=Math.floor(W*dpr);cv.height=Math.floor(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);ctx.shadowColor='white';}
+function initStars(){stars.length=0;for(let i=0;i<STAR_N;i++){const r=Math.floor(Math.random()*2)+1;
+const a=(Math.floor(Math.random()*10)+1)/10/2;stars.push({x:Math.random()*W,y:Math.random()*H,r,a});}}
+function drawStar(s){ctx.fillStyle=`rgba(255,255,255,${s.a})`;ctx.shadowBlur=s.r*2;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,7);ctx.fill();}
+function drawDot(d){ctx.fillStyle=`rgba(255,255,255,${d.a})`;ctx.shadowBlur=d.r*2;ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,7);ctx.fill();}
+function linkDot(idx){const d=dots[idx];if(idx<1)return;const p1=dots[idx-1],p2=dots[idx-2],p3=dots[idx-3];
+if(!p1)return;ctx.strokeStyle=`rgba(255,255,255,${d.a/4})`;ctx.shadowBlur=0;ctx.beginPath();
+ctx.moveTo(p1.x,p1.y);ctx.lineTo(d.x,d.y);if(p2)ctx.lineTo(p2.x,p2.y);if(p3)ctx.lineTo(p3.x,p3.y);ctx.stroke();}
+function spawn(x,y){const last=dots[dots.length-1];
+if(last&&Math.abs(last.bx-x)<3&&Math.abs(last.by-y)<3)return;
+const xv=(Math.random()>.5?-1:1)*(Math.floor(Math.random()*MAX_DIST)+1);
+const yv=(Math.random()>.5?-1:1)*(Math.floor(Math.random()*MAX_DIST)+1);
+dots.push({id:uid++,bx:x,by:y,x:x+xv,y:y+yv,r:Math.floor(Math.random()*5)+1,a:.5,dir:Math.floor(Math.random()*140)+200,speed:.5});
+if(dots.length>MAX_DOTS)dots.splice(0,dots.length-MAX_DOTS);}
+// reveal: personal small-star field above the mountains — 3s bright, then ultra-faint stay
+// reveal: true Nakshatra constellation maps (stylized true shapes — correct topology,
+// links and brightest star per classical asterism; relative coords, not survey-grade)
+const SHAPES=[
+{s:[[0.3,0.7,3],[0.65,0.4,3],[0.55,0.78,1]],l:[[0,1],[0,2]],b:'Beta Arietis'},
+{s:[[0.5,0.3,2],[0.3,0.7,2],[0.7,0.7,2]],l:[[0,1],[1,2],[2,0]],b:'41 Arietis'},
+{s:[[0.5,0.5,3],[0.35,0.35,2],[0.62,0.32,2],[0.3,0.62,1],[0.68,0.6,2],[0.52,0.78,1]],l:[[0,1],[0,2],[0,3],[0,4],[0,5]],b:'Alcyone'},
+{s:[[0.62,0.55,4],[0.35,0.3,2],[0.42,0.5,2],[0.5,0.68,2],[0.6,0.8,1]],l:[[0,1],[1,2],[2,3],[3,4]],b:'Aldebaran'},
+{s:[[0.3,0.6,2],[0.5,0.45,2],[0.7,0.55,2]],l:[[0,1],[1,2]],b:'Meissa'},
+{s:[[0.5,0.5,5]],l:[],b:'Betelgeuse'},
+{s:[[0.35,0.3,3],[0.65,0.35,4],[0.4,0.7,1],[0.62,0.72,1]],l:[[0,1],[0,2],[1,3],[2,3]],b:'Pollux'},
+{s:[[0.5,0.35,2],[0.32,0.65,2],[0.68,0.65,1]],l:[[0,1],[1,2],[2,0]],b:'Asellus Borealis'},
+{s:[[0.3,0.5,2],[0.42,0.38,2],[0.55,0.45,1],[0.62,0.6,2],[0.5,0.72,1]],l:[[0,1],[1,2],[2,3],[3,4]],b:'Delta Hydrae'},
+{s:[[0.55,0.6,4],[0.45,0.42,2],[0.35,0.3,2],[0.5,0.28,1],[0.62,0.38,1]],l:[[0,1],[1,2],[2,3],[3,4]],b:'Regulus'},
+{s:[[0.38,0.5,3],[0.62,0.5,2]],l:[[0,1]],b:'Zosma'},
+{s:[[0.4,0.45,3],[0.6,0.55,2]],l:[[0,1]],b:'Denebola'},
+{s:[[0.35,0.35,2],[0.65,0.35,2],[0.7,0.65,3],[0.3,0.65,2],[0.5,0.5,1]],l:[[0,1],[1,2],[2,3],[3,0],[0,4],[4,2]],b:'Gienah'},
+{s:[[0.5,0.5,5]],l:[],b:'Spica'},
+{s:[[0.5,0.5,5]],l:[],b:'Arcturus'},
+{s:[[0.3,0.65,3],[0.42,0.42,2],[0.58,0.42,2],[0.7,0.65,2]],l:[[0,1],[1,2],[2,3]],b:'Zubeneschamali'},
+{s:[[0.4,0.35,3],[0.55,0.5,2],[0.45,0.68,2],[0.62,0.7,1]],l:[[0,1],[1,2],[1,3]],b:'Acrab'},
+{s:[[0.5,0.5,5],[0.35,0.35,2],[0.65,0.4,1]],l:[[0,1],[0,2]],b:'Antares'},
+{s:[[0.5,0.25,2],[0.38,0.4,2],[0.62,0.4,2],[0.3,0.58,2],[0.5,0.55,3],[0.7,0.58,2],[0.42,0.75,1],[0.58,0.75,2]],l:[[0,1],[0,2],[1,3],[2,5],[3,6],[5,7],[4,6],[4,7],[1,4],[2,4]],b:'Lesath'},
+{s:[[0.4,0.5,3],[0.6,0.5,3]],l:[[0,1]],b:'Kaus Media'},
+{s:[[0.42,0.45,3],[0.6,0.55,3],[0.52,0.7,1]],l:[[0,1],[1,2]],b:'Nunki'},
+{s:[[0.5,0.55,4],[0.35,0.35,2],[0.65,0.35,2]],l:[[0,1],[0,2]],b:'Altair'},
+{s:[[0.5,0.3,3],[0.68,0.5,2],[0.5,0.7,3],[0.32,0.5,2]],l:[[0,1],[1,2],[2,3],[3,0]],b:'Sualocin'},
+{s:[[0.5,0.5,3],[0.35,0.4,1],[0.65,0.4,1],[0.4,0.65,1],[0.6,0.65,1]],l:[[0,1],[0,2],[0,3],[0,4]],b:'Hydor'},
+{s:[[0.38,0.5,3],[0.62,0.5,3]],l:[[0,1]],b:'Markab'},
+{s:[[0.4,0.5,3],[0.6,0.5,2]],l:[[0,1]],b:'Algenib'},
+{s:[[0.5,0.5,3],[0.38,0.62,1],[0.62,0.6,1]],l:[[0,1],[0,2]],b:'Revati Star'}
+];
+function revealK(){if(!reveal)return 0;const e=performance.now()-reveal.t0;
+if(e<RV_FI)return e/RV_FI;if(e<RV_FI+RV_HOLD)return 1;
+const d=(e-RV_FI-RV_HOLD)/RV_FO;return d>=1?RV_REST:1-(1-RV_REST)*d;}
+function revealPersonalSky(seed,label,nakIdx){const rnd=mulberry32(xfnv1a('shape|'+seed));
+const sh=SHAPES[((nakIdx|0)%27+27)%27]||SHAPES[0];
+const bx=W*0.07,by=H*0.12,bw=W*0.32,bh=H*0.44;
+const sc=Math.min(bw,bh),ox=bx+rnd()*W*0.03,oy=by+rnd()*H*0.03;
+const rot=(rnd()*2-1)*0.26,mir=rnd()>0.5?-1:1,c=Math.cos(rot),s2=Math.sin(rot);
+const pts=sh.s.map(pt=>{const dx=(pt[0]-0.5)*mir,dy=pt[1]-0.5;
+const X=dx*c-dy*s2,Y=dx*s2+dy*c,t=pt[2];
+return{x:ox+(X+0.5)*sc,y:oy+(Y+0.5)*sc,r:t>=5?6:t,a:t>=4?0.95:0.5+t*0.08,ph:rnd()*6.28,sp:.6+rnd()*1.4};});
+let bright=0;pts.forEach((q,i)=>{if(q.r>pts[bright].r)bright=i;});
+reveal={pts,links:sh.l,bright,name:label||sh.b,t0:performance.now()};
+try{window.dispatchEvent(new CustomEvent('bigcat-reveal'));}catch(e){}}
+// mandala: 27 Nakshatra anchors on a ring, birth node biggest + brightest, seeded chords + satellites
+function buildMandala(){const rnd=mulberry32(xfnv1a(seedStr+'|'+birthIdx));
+const R=Math.min(W,H)*.38,rot=rnd()*Math.PI*2,nodes=[];
+const meds=new Set();while(meds.size<4){const k=Math.floor(rnd()*27);if(k!==birthIdx)meds.add(k);}
+for(let i=0;i<27;i++){const jr=1+(rnd()*2-1)*.06;let r,a;
+if(i===birthIdx){r=7;a=.95;}else if(meds.has(i)){r=4+rnd()*1.5;a=.8;}else{r=1.5+rnd()*1.5;a=.35+rnd()*.35;}
+nodes.push({ang:rot+i*Math.PI*2/27,jr,r,a,ph:rnd()*Math.PI*2,sp:.5+rnd()*1.5});}
+const chords=[];let guard=0;while(chords.length<10&&guard++<300){const p=Math.floor(rnd()*27),q=Math.floor(rnd()*27);
+const dd=Math.abs(p-q),cd=Math.min(dd,27-dd);if(cd>6)chords.push([p,q]);}
+const sats=[];for(let i=0;i<25;i++)sats.push({x:rnd()*W,y:rnd()*H,r:.5+rnd(),a:.1+rnd()*.2,ph:rnd()*Math.PI*2});
+return{nodes,chords,sats,cx:W/2,cy:H/2,R};}
+function nodePos(n){const a=n.ang+ringRot;return{x:mandala.cx+Math.cos(a)*mandala.R*n.jr,y:mandala.cy+Math.sin(a)*mandala.R*n.jr};}
+function drawMandala(t){const m=mandala,P=m.nodes.map(nodePos);ctx.lineWidth=1;ctx.shadowBlur=0;
+for(const pair of m.chords){ctx.strokeStyle='rgba(255,255,255,0.10)';ctx.beginPath();
+ctx.moveTo(P[pair[0]].x,P[pair[0]].y);ctx.lineTo(P[pair[1]].x,P[pair[1]].y);ctx.stroke();}
+for(let i=0;i<27;i++){const A=P[i],B=P[(i+1)%27];ctx.strokeStyle='rgba(255,255,255,0.16)';ctx.beginPath();
+ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();}
+ctx.shadowColor='white';
+for(const s of m.sats){const tw=reduced?1:.7+.3*Math.sin(t*1.3+s.ph);
+ctx.fillStyle=`rgba(255,255,255,${(s.a*tw).toFixed(3)})`;ctx.shadowBlur=2;
+ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,7);ctx.fill();}
+m.nodes.forEach((n,i)=>{const q=P[i],tw=reduced?1:.75+.25*Math.sin(t*n.sp+n.ph);
+if(i===birthIdx){ctx.fillStyle=`rgba(255,255,255,0.22)`;ctx.shadowBlur=30;
+ctx.beginPath();ctx.arc(q.x,q.y,n.r*2.2,0,7);ctx.fill();}
+ctx.fillStyle=`rgba(255,255,255,${(n.a*tw).toFixed(3)})`;ctx.shadowBlur=(i===birthIdx)?24:n.r*3;
+ctx.beginPath();ctx.arc(q.x,q.y,n.r,0,7);ctx.fill();});}
+function enterMandala(seed,b){seedStr=String(seed);birthIdx=((b%27)+27)%27;mode='mandala';ringRot=0;
+cv.classList.add('full');const mc=document.getElementById('canvas');if(mc)mc.classList.add('hidden');
+resize();mandala=buildMandala();}
+function exitMandala(){mode='sky';mandala=null;cv.classList.remove('full');
+const mc=document.getElementById('canvas');if(mc)mc.classList.remove('hidden');resize();initStars();}
+window.BIGCAT={enterMandala,exitMandala,revealPersonalSky,get mode(){return mode;}};
+addEventListener('pointermove',e=>{if(e.clientY>H)return;mx=e.clientX;my=e.clientY;
+if(!moving&&dots.length===0)spawn(mx,my);moving=true;clearTimeout(timer);timer=setTimeout(()=>moving=false,100);
+if(dots.length){const l=dots[dots.length-1];if(Math.abs(l.bx-mx)>=3||Math.abs(l.by-my)>=3)spawn(mx,my);}}, {passive:true});
+addEventListener('resize',()=>{resize();if(mode==='mandala')mandala=buildMandala();else initStars();});
+resize();initStars();
+function tick(){const t=performance.now()/1000;ctx.clearRect(0,0,W,H);
+if(mode==='mandala'&&mandala){if(!reduced)ringRot+=0.00005;drawMandala(t);}
+else{ctx.shadowColor='white';
+for(const s of stars){if(!reduced){s.y-=.12;if(s.y<-10){s.y=H+10;s.x=Math.random()*W;}}drawStar(s);}
+if(reveal&&mode==='sky'){const k=revealK();
+if(k>0.001){ctx.lineWidth=1;ctx.shadowBlur=0;
+for(const pr of reveal.links){const A=reveal.pts[pr[0]],B=reveal.pts[pr[1]];
+if(!A||!B)continue;ctx.strokeStyle=`rgba(255,255,255,${(0.22*k).toFixed(3)})`;
+ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();}
+ctx.shadowColor='white';
+reveal.pts.forEach((q,i)=>{const tw=reduced?1:.7+.3*Math.sin(t*q.sp+q.ph);
+const bright=(i===reveal.bright);
+if(bright){ctx.fillStyle=`rgba(255,255,255,${(0.2*k).toFixed(3)})`;ctx.shadowBlur=28;
+ctx.beginPath();ctx.arc(q.x,q.y,q.r*2.4,0,7);ctx.fill();}
+ctx.fillStyle=`rgba(255,255,255,${(q.a*k*tw).toFixed(3)})`;ctx.shadowBlur=bright?22:q.r*3;
+ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,7);ctx.fill();});
+if(reveal.name&&k>0.25){const B=reveal.pts[reveal.bright];
+if(B){ctx.shadowBlur=6;ctx.font='16px "Caveat Brush",cursive';ctx.textAlign='center';
+ctx.fillStyle=`rgba(255,255,255,${(0.92*k).toFixed(3)})`;
+ctx.fillText(reveal.name,B.x,B.y-Math.max(18,B.r*2+10));}}}}}
+ctx.shadowColor='white';
+for(let i=dots.length-1;i>=0;i--){const d=dots[i];d.a-=.006;if(d.a<=0){dots.splice(i,1);continue;}
+if(!reduced){const rad=d.dir*Math.PI/180;d.x+=Math.cos(rad)*d.speed;d.y+=Math.sin(rad)*d.speed;}}
+for(const d of dots)drawDot(d);for(let i=0;i<dots.length;i++)linkDot(i);
+ctx.shadowBlur=0;requestAnimationFrame(tick);}
+if(reduced){ctx.clearRect(0,0,W,H);for(const s of stars)drawStar(s);}
+else requestAnimationFrame(tick);
+// demo preview: open index.html?demo=1 to see the mandala (birth index 4 = Rohini)
+if(new URLSearchParams(location.search).has('demo')){enterMandala('demo-bigcat-rohini',4);
+const L=document.getElementById('loader');if(L)L.style.display='none';
+const C=document.getElementById('controls');if(C)C.style.display='block';
+const N=document.getElementById('note');if(N)N.style.opacity=1;}})();
+</script>
+<script type="module">
+/* BIG CAT voice flow: mic -> Whisper tiny.en (open-weight, local) -> entity parse -> spoken confirm -> nakshatra math -> 3s reveal */
+import { AutoProcessor, AutoTokenizer, AutoModelForSpeechSeq2Seq } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
+const $=id=>document.getElementById(id);
+const statusEl=$('voice__status'),echoEl=$('voice__echo');let activeMicBtn=null;
+function setStatus(t){if(statusEl)statusEl.textContent=t||'';}
+function setEcho(t){if(echoEl)echoEl.textContent=t||'';}
+function say(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=1.02;speechSynthesis.speak(u);}catch(e){}}
+// ---------- deterministic entity parser (pure, node-testable) ----------
+const MONTHS={january:1,jan:1,february:2,feb:2,march:3,mar:3,april:4,apr:4,may:5,june:6,jun:6,july:7,jul:7,august:8,aug:8,september:9,sept:9,sep:9,october:10,oct:10,november:11,nov:11,december:12,dec:12};
+const CITIES={'kolkata':5.5,'calcutta':5.5,'mumbai':5.5,'bombay':5.5,'delhi':5.5,'new delhi':5.5,'chennai':5.5,'madras':5.5,'bengaluru':5.5,'bangalore':5.5,'hyderabad':5.5,'ahmedabad':5.5,'pune':5.5,'jaipur':5.5,'lucknow':5.5,'kanpur':5.5,'patna':5.5,'varanasi':5.5,'kathmandu':5.75,'dhaka':6,'dacca':6,'colombo':5.5,'karachi':5,'dubai':4,'london':0,'new york':-5,'chicago':-6,'los angeles':-8,'toronto':-5,'sydney':10,'singapore':8,'kuala lumpur':8,'bangkok':7,'hong kong':8,'hongkong':8,'tokyo':9};
+function parseDetails(text){const f={name:null,dob:null,time:null,place:null,tz:null};if(!text)return f;
+const low=' '+text.toLowerCase().replace(/[,?.!]/g,' ')+' ';
+let m=low.match(/(?:my name is|i am|this is|call me)\s+([a-z ]+?)(?=\s+(?:born|birth|date|time|at|on|in|$))/);
+if(m&&m[1].trim())f.name=cap(m[1].trim().split(/\s+/).slice(0,3).join(' '));
+m=low.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\s+(\d{4})/);
+if(m){f.dob={d:+m[1],m:MONTHS[m[2].slice(0,3)],y:+m[3]};}
+else{m=low.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+if(m){let y=+m[3];if(y<100)y=y>30?1900+y:2000+y;f.dob={d:+m[1],m:+m[2],y};}}
+m=low.match(/(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night|o\s*clock)/);
+if(m){let h=+m[1],min=m[2]?+m[2]:0;const mark=m[3].replace(/\./g,'');
+let ap=null;if(mark[0]==='a'||mark.includes('morning'))ap='AM';else if(mark[0]==='p'||mark.includes('evening')||mark.includes('night'))ap='PM';
+else if(mark.includes('clock'))ap=(h>=6&&h<=11)?'AM':null;
+if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h<12)h+=12;
+f.time={h,min,ap};}
+const keys=Object.keys(CITIES).sort((a,b)=>b.length-a.length);
+for(const k of keys){if(low.includes(' '+k+' ')||low.includes(' '+k+'s ')){f.place=cap(k);f.tz=CITIES[k];break;}}
+return f;}
+function cap(s){return s.replace(/\b\w/g,c=>c.toUpperCase());}
+function missing(f){const o=[];if(!f.name)o.push('name');if(!f.dob)o.push('date of birth');
+if(!f.time||!f.time.ap)o.push('time with AM or PM');if(!f.place)o.push('place');return o;}
+// ---------- vedic astro-math: sidereal Moon -> nakshatra (pure, node-testable) ----------
+const NAK=[
+['Ashwini','Ketu'],['Bharani','Venus'],['Krittika','Sun'],['Rohini','Moon'],['Mrigashira','Mars'],
+['Ardra','Rahu'],['Punarvasu','Jupiter'],['Pushya','Saturn'],['Ashlesha','Mercury'],['Magha','Ketu'],
+['Purva Phalguni','Venus'],['Uttara Phalguni','Sun'],['Hasta','Moon'],['Chitra','Mars'],['Swati','Rahu'],
+['Vishakha','Jupiter'],['Anuradha','Saturn'],['Jyeshtha','Mercury'],['Mula','Ketu'],['Purva Ashadha','Venus'],
+['Uttara Ashadha','Sun'],['Shravana','Moon'],['Dhanishta','Mars'],['Shatabhisha','Rahu'],
+['Purva Bhadrapada','Jupiter'],['Uttara Bhadrapada','Saturn'],['Revati','Mercury']];
+const RASHI=['Mesha','Vrishabha','Mithuna','Karka','Simha','Kanya','Tula','Vrishchika','Dhanu','Makara','Kumbha','Meena'];
+const norm360=x=>{x%=360;return x<0?x+360:x;};
+const RAD=Math.PI/180;
+function julday(y,mo,d,uth){if(mo<=2){y--;mo+=12;}const A=Math.floor(y/100),B=2-A+Math.floor(A/4);
+return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(mo+1))+d+B-1524.5+uth/24;}
+function moonTropicalLon(jd){const d=jd-2451543.5;
+const N=norm360(125.1228-0.0529538083*d),inc=5.1454,w=norm360(318.0634+0.1643573223*d);
+const a=60.2666,e=0.0549,M=norm360(115.3654+13.0649929509*d);
+let E=M+e*57.2958*Math.sin(M*RAD)*(1+e*Math.cos(M*RAD));
+for(let k=0;k<5;k++)E=E-(E-e*57.2958*Math.sin(E*RAD)-M)/(1-e*Math.cos(E*RAD));
+const xv=a*(Math.cos(E*RAD)-e),yv=a*(Math.sqrt(1-e*e)*Math.sin(E*RAD));
+const v=Math.atan2(yv,xv)/RAD;
+const xh=Math.cos(N*RAD)*Math.cos((v+w)*RAD)-Math.sin(N*RAD)*Math.sin((v+w)*RAD)*Math.cos(inc*RAD);
+const yh=Math.sin(N*RAD)*Math.cos((v+w)*RAD)+Math.cos(N*RAD)*Math.sin((v+w)*RAD)*Math.cos(inc*RAD);
+let lon=Math.atan2(yh,xh)/RAD;
+const Ms=norm360(356.0470+0.9856002585*d),Ws=norm360(282.9404+4.70935e-5*d);
+const Mm=M,Lm=norm360(N+w+Mm),Ls=norm360(Ws+Ms),D=norm360(Lm-Ls),F=norm360(Lm-N),S=Math.sin;
+lon+=-1.274*S((Mm-2*D)*RAD)+0.658*S(2*D*RAD)-0.186*S(Ms*RAD)-0.059*S((2*Mm-2*D)*RAD)
+-0.057*S((Mm-2*D+Ms)*RAD)+0.053*S((Mm+2*D)*RAD)+0.046*S((2*D-Ms)*RAD)+0.041*S((Mm-Ms)*RAD)
+-0.035*S(D*RAD)-0.031*S((Mm+Ms)*RAD)-0.015*S((2*F-2*D)*RAD)+0.011*S((Mm-4*D)*RAD);
+return norm360(lon);}
+function computeProfile(f){const uth=f.time.h+f.time.min/60;
+const jd=julday(f.dob.y,f.dob.m,f.dob.d,uth)-f.tz/24;
+const trop=moonTropicalLon(jd);
+const ayan=23.857+(jd-2451545.0)*0.00003825; // Lahiri, low-precision
+const sid=norm360(trop-ayan),SPAN=360/27;
+const nakIdx=Math.min(26,Math.floor(sid/SPAN));
+const frac=(sid-nakIdx*SPAN)/SPAN,pada=Math.min(4,Math.floor(frac*4)+1);
+const edge=Math.min(frac,1-frac)*SPAN; // deg to nearest cusp
+return{nak:NAK[nakIdx][0],lord:NAK[nakIdx][1],nakIdx,pada,rashi:RASHI[Math.floor(sid/30)],borderline:edge<1.0,sid:+sid.toFixed(2)};}
+if(typeof window!=='undefined')window.BIGCATastro={parseDetails,missing,computeProfile,prepAudio,NAKSHATRAS:NAK,CITIES};
+// ---------- voice state machine ----------
+let transcriber=null,recording=false,mediaRec=null,chunks=[],fields=null,busy=false,whisperDead=false,whisperWhy='',recTimer=null,whisperSize='tiny';
+const WHISPER_MODELS={tiny:'Xenova/whisper-tiny.en',base:'Xenova/whisper-base.en',small:'Xenova/whisper-small.en'};
+async function ensureWhisper(){if(transcriber)return transcriber;
+if(whisperDead)throw new Error(whisperWhy||'voice model unavailable');
+const id=WHISPER_MODELS[whisperSize]||WHISPER_MODELS.tiny;
+const prog=p=>{if(p&&p.status==='progress'&&p.file)setStatus('Voice loading '+Math.round((p.loaded/Math.max(1,p.total))*100)+'% — '+String(p.file).split('/').pop());};
+try{
+setStatus('Voice: reading model config…');
+const processor=await AutoProcessor.from_pretrained(id,{progress_callback:prog});
+setStatus('Voice: loading speech brain ('+whisperSize+')…');
+const model=await AutoModelForSpeechSeq2Seq.from_pretrained(id,{progress_callback:prog});
+setStatus('Voice: reading dictionary…');
+const tokenizer=await AutoTokenizer.from_pretrained(id,{progress_callback:prog});
+transcriber={processor,tokenizer,model,id};
+}catch(e){throw new Error('stage failed ('+id+'): '+String((e&&e.message)||e).slice(0,180));}
+if(!window.BIGCATvoiceReady){window.BIGCATvoiceReady=true;setStatus('Voice ready (on-device) — tap any mic and speak.');showBigEar();}
+return transcriber;}
+function showBigEar(){const b=$('bigear');if(b)b.style.display=(whisperSize==='tiny')?'block':'none';}
+function prepAudio(buf){
+const c0=buf.getChannelData(0),c1=buf.numberOfChannels>1?buf.getChannelData(1):null;
+const sr=buf.sampleRate,n=c0.length,mono=new Float32Array(n);
+for(let i=0;i<n;i++)mono[i]=c1?(c0[i]+c1[i])/2:c0[i];
+const thr=0.02;let a=0,b=n-1;
+while(a<n&&Math.abs(mono[a])<thr)a++;
+while(b>a&&Math.abs(mono[b])<thr)b--;
+a=Math.max(0,a-Math.floor(sr*0.35));
+const seg=mono.subarray(a,b+1);
+const ratio=sr/16000,len=Math.max(1,Math.floor(seg.length/ratio)),out=new Float32Array(len);
+for(let i=0;i<len;i++){const s=Math.floor(i*ratio),e=Math.min(seg.length,Math.floor((i+1)*ratio));
+let acc=0,c=0;for(let j=s;j<e;j++){acc+=seg[j];c++;}out[i]=c?acc/c:seg[Math.min(seg.length-1,s)];}
+let mean=0;for(let i=0;i<len;i++)mean+=out[i];mean/=Math.max(1,len);
+let peak=0,rms=0;for(let i=0;i<len;i++){out[i]-=mean;const v=Math.abs(out[i]);rms+=out[i]*out[i];if(v>peak)peak=v;}
+rms=Math.sqrt(rms/Math.max(1,len));
+const quiet=rms<0.015;
+if(peak>1e-4){const g=Math.min(30,0.9/peak);for(let i=0;i<len;i++)out[i]*=g;}
+const m=Math.min(len,1600);for(let i=len-m;i<len;i++)out[i]=0;
+return{audio:out,quiet,dur:len/16000};}
+async function transcribe(blob){
+if(!blob||!blob.size)throw new Error('empty recording');
+const ab=await blob.arrayBuffer();
+const AC=window.AudioContext||window.webkitAudioContext;let actx;
+try{actx=new AC();}catch(e){throw new Error('no audio engine');}
+let buf;try{buf=await actx.decodeAudioData(ab);}finally{try{await actx.close();}catch(e){}}
+const pre=prepAudio(buf);
+if(pre.dur<0.4)throw new Error('too short');
+const w=await ensureWhisper();
+const feature=await w.processor(pre.audio);
+const hop=(w.processor.feature_extractor&&w.processor.feature_extractor.config&&w.processor.feature_extractor.config.hop_length)||160;
+const frames=Math.max(1,Math.floor(pre.audio.length/hop));
+const genOpts={num_frames:frames};
+try{const dpids=w.tokenizer.get_decoder_prompt_ids({language:'english',task:'transcribe',no_timestamps:true});
+if(dpids&&dpids.length)genOpts.forced_decoder_ids=dpids;}catch(e){}
+const data=await w.model.generate(feature.input_features,genOpts);
+const tp=w.processor.feature_extractor.config.chunk_length/w.model.config.max_source_positions;
+const dec=w.tokenizer._decode_asr([{tokens:data[0],stride:[pre.audio.length,0,0]}],{time_precision:tp,return_timestamps:false,force_full_sequences:false});
+const text=((Array.isArray(dec)?dec[0]:(dec&&(dec.text||dec)))||'').trim();
+return{text,quiet:pre.quiet};}
+function showRescue(){setStatus('Mic unavailable — type answers in the cards.');say('Mic unavailable. Please type your answers.');}
+async function startListen(btn){if(busy){setStatus('Working… one moment.');return;}activeMicBtn=btn||null;
+whisperDead=false;whisperWhy='';
+try{
+if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showRescue();return;}
+await ensureWhisper();
+const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+const my=[];chunks=my;const rec=new MediaRecorder(stream);mediaRec=rec;
+rec.ondataavailable=e=>{if(e.data.size)my.push(e.data);};
+rec.onstop=()=>{try{stream.getTracks().forEach(t=>t.stop());}catch(e){}
+onUtterance(new Blob(my,{type:rec.mimeType||'audio/webm'}));};
+rec.start();recording=true;if(activeMicBtn)activeMicBtn.classList.add('rec');
+setStatus('Speak now — tap the mic again to stop.');
+if(recTimer)clearTimeout(recTimer);recTimer=setTimeout(()=>{if(recording)stopListen();},12000);
+}catch(err){useFallback();}}
+function useFallback(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){setStatus('Mic unavailable — type answers in the cards.');say('Mic unavailable. Please type your answers.');return;}
+try{recording=true;let got=false;const rec=new SR();rec.lang='en-US';rec.interimResults=false;rec.maxAlternatives=1;
+const field=utterTarget;
+setStatus('Listening (built-in voice)… speak now.');
+rec.onresult=e=>{got=true;const txt=((e.results[0]||[])[0]||{}).transcript||'';
+if(txt&&field)handleField(field,String(txt).trim());else setStatus('Did not catch that — tap mic and try again, or type.');};
+rec.onerror=()=>setStatus('Did not catch that — tap mic and try again, or type.');
+rec.onend=()=>{recording=false;if(activeMicBtn)activeMicBtn.classList.remove('rec');activeMicBtn=null;
+if(!got){utterTarget=null;setStatus('Heard nothing — move closer and tap mic again, or type.');}};
+if(activeMicBtn)activeMicBtn.classList.add('rec');rec.start();
+}catch(e){recording=false;setStatus('Mic unavailable — type answers in the cards.');}}
+function stopListen(){if(recTimer){clearTimeout(recTimer);recTimer=null;}
+if(mediaRec&&recording){recording=false;
+if(activeMicBtn)activeMicBtn.classList.remove('rec');activeMicBtn=null;
+try{mediaRec.stop();}catch(e){onUtterance(new Blob(chunks));}}}
+async function onUtterance(blob){if(busy){setStatus('Working… one moment.');return;}busy=true;
+try{setStatus('Hearing you…');const r=await transcribe(blob);const text=r.text;
+if(!text){utterTarget=null;
+if(r.quiet){setStatus('Too quiet — move closer and speak up, then tap mic.');say('Too quiet. Move closer and try again.');}
+else setStatus('Did not catch that — tap mic and try again.');}
+busy=false;return;
+if(utterTarget){const k=utterTarget;utterTarget=null;handleField(k,text);}else setEcho('“'+text+'”');
+}catch(err){const msg=String((err&&err.message)||err);
+if(/empty|too short/i.test(msg))setStatus('That was '+msg+' — tap mic, speak, then stop.');
+else{setStatus('Voice engine failed ('+msg.slice(0,110)+') — tap mic to retry, or type below.');showRescue();}utterTarget=null;}busy=false;}
+// ---------- unfolding birth cards: per-field voice + typed, auto-advance ----------
+let utterTarget=null;
+const ORDER=['name','dob','time','place'];
+const secs={};document.querySelectorAll('#bform .input-section').forEach(s=>{secs[s.dataset.field]=s;});
+if(!fields)fields={name:null,dob:null,time:null,place:null,tz:null};
+let cur=0,chipAP=null;
+function setChips(ap){chipAP=ap;document.querySelectorAll('.ampm').forEach(b=>b.classList.toggle('on',b.dataset.ap===ap));}
+document.querySelectorAll('.ampm').forEach(b=>b.addEventListener('click',()=>setChips(b.dataset.ap)));
+function paintCards(){ORDER.forEach((k,j)=>{const s=secs[k];if(!s)return;
+s.classList.remove('fold-up');s.classList.toggle('folded',j>cur);if(j<cur)s.classList.add('fold-up');});
+const nx=secs[ORDER[cur]];if(nx){const inp=nx.querySelector('input');if(inp)setTimeout(()=>{try{inp.focus();}catch(e){}},300);}}
+function readCard(k){const el=$('f_'+k),v=el?el.value.trim():'';
+if(!v)return{ok:false,msg:'empty'};
+if(k==='name')return{ok:true,val:cap(v.split(/\s+/).slice(0,3).join(' '))};
+if(k==='dob'){const p=parseDetails('on '+v);return p.dob?{ok:true,val:p.dob}:{ok:false,msg:'date'};}
+if(k==='time'){const p=parseDetails('at '+v);let t=p.time;
+if(!t||!t.ap){if(!chipAP)return{ok:false,msg:'ampm'};
+let h=+(((v.match(/(\d{1,2})/)||[])[1])||0);
+if(chipAP==='AM'&&h===12)h=0;if(chipAP==='PM'&&h<12)h+=12;
+const mm=v.match(/:(\d{2})/);t={h,min:mm?+mm[1]:0,ap:chipAP};}
+setChips(t.ap);return{ok:true,val:t};}
+const p=parseDetails('born in '+v);return p.place?{ok:true,val:{place:p.place,tz:p.tz}}:{ok:false,msg:'place'};}
+function commitCard(k){const r=readCard(k);
+if(!r.ok){const hint={empty:'Say or type your '+k+'.',date:'Use e.g. 12 March 1998.',ampm:'Pick AM or PM, or say morning/evening.',place:'Which city were you born in?'}[r.msg];
+setStatus(hint);say('Please give me '+k+'.');return false;}
+if(k==='place'){fields.place=r.val.place;fields.tz=r.val.tz;}else fields[k]=r.val;
+crackFlicker(secs[ORDER[cur]]);
+if(cur<ORDER.length-1){cur++;paintCards();}
+else{const sc=document.querySelector('#bform .success');if(sc)sc.classList.remove('folded');
+setStatus('Stars aligned.');setTimeout(()=>lockIn(),1200);}
+return true;}
+function handleField(k,text){const upd=parseDetails(text);setEcho('“'+text+'”');
+const MN=['','January','February','March','April','May','June','July','August','September','October','November','December'];
+if(k==='name'&&upd.name)$('f_name').value=upd.name;
+if(k==='dob'&&upd.dob)$('f_dob').value=`${upd.dob.d} ${MN[upd.dob.m]} ${upd.dob.y}`;
+if(k==='time'&&upd.time){const t=upd.time;$('f_time').value=`${t.h%12===0?12:t.h%12}${t.min?':'+String(t.min).padStart(2,'0'):''}`;setChips(t.ap);}
+if(k==='place'&&upd.place)$('f_place').value=upd.place;
+if(commitCard(k)){if(cur<ORDER.length)say('Next.');}}
+document.querySelectorAll('#bform .next').forEach(b=>b.addEventListener('click',()=>{commitCard(b.dataset.field);}));
+document.querySelectorAll('#bform .mic').forEach(b=>b.addEventListener('click',()=>{
+if(busy){setStatus('Working… one moment.');return;}
+if(recording){stopListen();setStatus('Heard that one — tap mic again for this card.');return;}
+utterTarget=b.dataset.field;startListen(b);}));
+paintCards();
+const bigearBtn=$('bigear');
+if(bigearBtn)bigearBtn.addEventListener('click',async()=>{if(busy)return;busy=true;
+whisperSize='small';transcriber=null;window.BIGCATvoiceReady=false;bigearBtn.style.display='none';
+setStatus('Loading big ear…');say('Loading the big ear.');
+try{await ensureWhisper();}catch(e){whisperSize='tiny';transcriber=null;
+setStatus('Big ear failed ('+String((e&&e.message)||e).slice(0,120)+') — staying on tiny.');}
+busy=false;});
+// preload voice model on page load so failure surfaces early with the real reason
+async function preloadVoice(){try{await ensureWhisper();}
+catch(e){whisperDead=true;whisperWhy=String((e&&e.message)||e).slice(0,120);
+setStatus('Voice model failed ('+whisperWhy+'). Built-in voice will be used.');}}
+if(document.readyState==='complete')preloadVoice();else addEventListener('load',preloadVoice);
+// glass-crack intro: 3s scale/blur/quiver/shake on the stack, crack + split inside the header only
+const bformEl=document.querySelector('.bform');
+function crackFlicker(el){const t=el||bformEl;if(!t||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+t.classList.remove('mini-shake');void t.offsetWidth;t.classList.add('mini-shake');
+setTimeout(()=>t.classList.remove('mini-shake'),400);}
+if(bformEl&&!matchMedia('(prefers-reduced-motion: reduce)').matches){
+bformEl.classList.add('crack-intro');
+setTimeout(()=>bformEl.classList.remove('crack-intro'),3200);
+setTimeout(()=>{const hb=document.querySelector('.bform header');const ld=document.getElementById('loader');
+if(hb){hb.classList.add('cracking');setTimeout(()=>hb.classList.remove('cracking'),1100);}
+if(ld){ld.classList.add('cracking');setTimeout(()=>ld.classList.remove('cracking'),1100);}
+bformEl.classList.add('mini-shake');setTimeout(()=>bformEl.classList.remove('mini-shake'),400);},2900);}
+function lockIn(){const miss=missing(fields);
+if(miss.length){setStatus('Still need: '+miss.join(', ')+'.');return;}
+let prof;try{prof=computeProfile(fields);}catch(e){setStatus('Date looks invalid — check the cards.');return;}
+const seed=`${fields.name}|${fields.dob.y}-${fields.dob.m}-${fields.dob.d}|${prof.nakIdx}`;
+window.BIGCATseed=seed;window.BIGCATprof=prof;
+const res=$('result');
+if(res){res.style.display='block';res.style.cursor='pointer';res.title='Tap to replay your stars';
+res.innerHTML=`<b>${fields.name}</b> · ${prof.nak} (pada ${prof.pada})<br>Moon sign ${prof.rashi} · Lord ${prof.lord}${prof.borderline?'<br><i>Near a cusp — verify with exact ephemeris.</i>':''}<br>by Lustersourav<br><span style="opacity:.6">↻ tap to replay your stars</span>`;
+res.onclick=()=>{try{const bp=window.BIGCATprof||{};if(window.BIGCAT)window.BIGCAT.revealPersonalSky(window.BIGCATseed,bp.nak||'',bp.nakIdx||0);say('Showing your star again.');}catch(e){}};}
+setStatus('Stars aligned. Look up.');setEcho('');
+say(`Your birth star is ${prof.nak}, pada ${prof.pada}. Moon sign ${prof.rashi}.`);
+try{$('loader__cta').click();}catch(e){}
+setTimeout(()=>{try{if(window.BIGCAT)window.BIGCAT.revealPersonalSky(seed,prof.nak,prof.nakIdx);}catch(e){}},2600);}
+</script>
+</body>
+</html>
