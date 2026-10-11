@@ -672,6 +672,9 @@ paintCards();
 const bigearBtn=$('bigear');
 if(bigearBtn)bigearBtn.addEventListener('click',async()=>{if(busy)return;busy=true;
 whisperSize='small';transcriber=null;window.BIGCATvoiceReady=false;bigearBtn.style.display='none';
+try{const probe=await fetch('models/Xenova/whisper-small.en/onnx/decoder_model_merged_quantized.onnx',{method:'HEAD'});
+if(!probe.ok)throw new Error('absent');}catch(e){whisperSize='tiny';
+setStatus('Big ear isn\u2019t hosted here — tiny stays on duty.');busy=false;return;}
 setStatus('Loading big ear…');say('Loading the big ear.');
 try{await ensureWhisper();}catch(e){whisperSize='tiny';transcriber=null;
 setStatus('Big ear failed ('+String((e&&e.message)||e).slice(0,120)+') — staying on tiny.');}
