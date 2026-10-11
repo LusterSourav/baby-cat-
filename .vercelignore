@@ -1,0 +1,6 @@
+# keep the live deploy under the platform per-file limit (100MB):
+# whisper-small.en stays local-only (its decoder is 161MB)
+models/Xenova/whisper-small.en/
+# local history + tooling never ship
+backup/
+node_modules/
