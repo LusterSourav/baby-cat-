@@ -45,6 +45,10 @@ canvas{opacity:1;background:#000;display:block;width:100%;height:100%}
 .bform .success{width:100%;position:absolute;display:flex;align-items:center;left:50%;transform:translate(-50%,0);height:75px;border-radius:0 0 15px 15px;overflow:hidden;z-index:5;background:#fff;margin-top:0;transition:all .25s ease-in}
 .bform .success.folded{width:90%;margin-top:20px;z-index:1;background:#222}
 .bform .success p{color:#000;font-weight:400;letter-spacing:1px;font-size:24px;width:100%;text-align:center;font-family:"Caveat Brush",cursive}
+.bform .confirmbox{display:flex;align-items:center;width:100%}
+.bform .confirmbox p{flex:1;color:#000;font-size:17px;margin:0;padding-left:40px;font-family:"Caveat Brush",cursive;text-align:left;min-width:0}
+.bform .confirmbox .card-btns button{border-color:#111;color:#111}
+.bform .confirmbox .card-btns button:hover{background:#111;color:#fff}
 .skip{margin-top:20px;font-family:"Caveat Brush",cursive;font-size:17px;color:rgba(255,255,255,.45);cursor:pointer}
 .skip:hover{color:#fff}
 /* glass-crack cinematic over the card stack (pure CSS, no deps) */
@@ -138,7 +142,7 @@ header.cracking .bmr{animation:bmcrackR .1s linear forwards}
 <input id="f_place" placeholder="BIRTH PLACE — KOLKATA" autocomplete="off">
 <div class="card-btns"><button type="button" class="mic" data-field="place" aria-label="Speak place"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="9.3" rx="2.1" ry="1.6" fill="currentColor"/><circle cx="8.9" cy="6.3" r="0.95" fill="currentColor"/><circle cx="12" cy="5.3" r="0.95" fill="currentColor"/><circle cx="15.1" cy="6.3" r="0.95" fill="currentColor"/><rect x="10.9" y="13.6" width="2.2" height="5.6" rx="1.1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 21.2 Q12 18 17.5 21.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><button type="button" class="next" data-field="place" aria-label="Finish">✈</button></div>
 </section>
-<section class="success folded"><p>STARS ALIGNED</p></section>
+<section class="success folded" data-field="done"><div class="confirmbox"><p id="confirm__lines"></p><div class="card-btns"><button type="button" id="confirm__yes" aria-label="Confirm">✓</button><button type="button" id="confirm__no" aria-label="Restart">↻</button></div></div><p id="success__done" style="display:none">STARS ALIGNED</p></section>
 </form>
 <svg id="bm-crack" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
 <g id="bm-crack-g" opacity="0">
@@ -478,12 +482,20 @@ if(m){let y=+m[3];if(y<100)y=y>30?1900+y:2000+y;f.dob={d:+m[1],m:+m[2],y};}}
 m=low.match(/(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night|o\s*clock)/);
 if(m){let h=+m[1],min=m[2]?+m[2]:0;const mark=m[3].replace(/\./g,'');
 let ap=null;if(mark[0]==='a'||mark.includes('morning'))ap='AM';else if(mark[0]==='p'||mark.includes('evening')||mark.includes('night'))ap='PM';
-else if(mark.includes('clock'))ap=(h>=6&&h<=11)?'AM':null;
 if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h<12)h+=12;
 f.time={h,min,ap};}
 const keys=Object.keys(CITIES).sort((a,b)=>b.length-a.length);
-for(const k of keys){if(low.includes(' '+k+' ')||low.includes(' '+k+'s ')){f.place=cap(k);f.tz=CITIES[k];break;}}
+for(const k of keys){if(low.includes(' '+k+' ')||low.includes(' '+k+'s ')){f.place=cap(k);f.tz=CITIES[k];f.tzKey=k;break;}}
 return f;}
+function lastSun(y,m){const end=new Date(Date.UTC(y,m,0)).getUTCDate();let d=end;while(new Date(Date.UTC(y,m-1,d)).getUTCDay()!==0)d--;return d;}
+function firstSun(y,m){let d=1;while(new Date(Date.UTC(y,m-1,d)).getUTCDay()!==0)d++;return d;}
+function nthSun(y,m,n){let c=0;for(let d=1;;d++){if(new Date(Date.UTC(y,m-1,d)).getUTCDay()===0&&++c===n)return d;}}
+function dstOffset(key,dob){if(!key||!dob)return 0;const{y,m,d}=dob;
+const inR=(m1,d1,m2,d2)=>{const v=m*100+d;return v>=m1*100+d1&&v<=m2*100+d2;};
+if(key==='london')return inR(3,lastSun(y,3),10,lastSun(y,10))?1:0;
+if(key==='new york'||key==='toronto'||key==='chicago'||key==='los angeles')return inR(3,nthSun(y,3,2),11,nthSun(y,11,1))?1:0;
+if(key==='sydney')return (inR(10,firstSun(y,10),12,31)||inR(1,1,4,firstSun(y,4)))?1:0;
+return 0;}
 function cap(s){return s.replace(/\b\w/g,c=>c.toUpperCase());}
 function missing(f){const o=[];if(!f.name)o.push('name');if(!f.dob)o.push('date of birth');
 if(!f.time||!f.time.ap)o.push('time with AM or PM');if(!f.place)o.push('place');return o;}
@@ -517,15 +529,16 @@ lon+=-1.274*S((Mm-2*D)*RAD)+0.658*S(2*D*RAD)-0.186*S(Ms*RAD)-0.059*S((2*Mm-2*D)*
 -0.035*S(D*RAD)-0.031*S((Mm+Ms)*RAD)-0.015*S((2*F-2*D)*RAD)+0.011*S((Mm-4*D)*RAD);
 return norm360(lon);}
 function computeProfile(f){const uth=f.time.h+f.time.min/60;
-const jd=julday(f.dob.y,f.dob.m,f.dob.d,uth)-f.tz/24;
+const effTz=(f.tz||0)+dstOffset(f.tzKey,f.dob);
+const jd=julday(f.dob.y,f.dob.m,f.dob.d,uth)-effTz/24;
 const trop=moonTropicalLon(jd);
 const ayan=23.857+(jd-2451545.0)*0.00003825; // Lahiri, low-precision
 const sid=norm360(trop-ayan),SPAN=360/27;
 const nakIdx=Math.min(26,Math.floor(sid/SPAN));
 const frac=(sid-nakIdx*SPAN)/SPAN,pada=Math.min(4,Math.floor(frac*4)+1);
 const edge=Math.min(frac,1-frac)*SPAN; // deg to nearest cusp
-return{nak:NAK[nakIdx][0],lord:NAK[nakIdx][1],nakIdx,pada,rashi:RASHI[Math.floor(sid/30)],borderline:edge<1.0,sid:+sid.toFixed(2)};}
-if(typeof window!=='undefined')window.BIGCATastro={parseDetails,missing,computeProfile,prepAudio,NAKSHATRAS:NAK,CITIES};
+return{nak:NAK[nakIdx][0],lord:NAK[nakIdx][1],nakIdx,pada,rashi:RASHI[Math.floor(sid/30)],borderline:edge<1.0,sid:+sid.toFixed(2),tz:effTz};}
+if(typeof window!=='undefined')window.BIGCATastro={parseDetails,missing,computeProfile,prepAudio,dstOffset,NAKSHATRAS:NAK,CITIES};
 // ---------- voice state machine ----------
 let transcriber=null,recording=false,mediaRec=null,chunks=[],fields=null,busy=false,whisperDead=false,whisperWhy='',recTimer=null,whisperSize='tiny';
 const WHISPER_MODELS={tiny:'Xenova/whisper-tiny.en',base:'Xenova/whisper-base.en',small:'Xenova/whisper-small.en'};
@@ -629,7 +642,7 @@ else{setStatus('Voice engine failed ('+msg.slice(0,110)+') — tap mic to retry,
 let utterTarget=null;
 const ORDER=['name','dob','time','place'];
 const secs={};document.querySelectorAll('#bform .input-section').forEach(s=>{secs[s.dataset.field]=s;});
-if(!fields)fields={name:null,dob:null,time:null,place:null,tz:null};
+if(!fields)fields={name:null,dob:null,time:null,place:null,tz:null,tzKey:null};
 let cur=0,chipAP=null;
 function setChips(ap){chipAP=ap;document.querySelectorAll('.ampm').forEach(b=>b.classList.toggle('on',b.dataset.ap===ap));}
 document.querySelectorAll('.ampm').forEach(b=>b.addEventListener('click',()=>setChips(b.dataset.ap)));
@@ -646,16 +659,35 @@ let h=+(((v.match(/(\d{1,2})/)||[])[1])||0);
 if(chipAP==='AM'&&h===12)h=0;if(chipAP==='PM'&&h<12)h+=12;
 const mm=v.match(/:(\d{2})/);t={h,min:mm?+mm[1]:0,ap:chipAP};}
 setChips(t.ap);return{ok:true,val:t};}
-const p=parseDetails('born in '+v);return p.place?{ok:true,val:{place:p.place,tz:p.tz}}:{ok:false,msg:'place'};}
+const p=parseDetails('born in '+v);return p.place?{ok:true,val:{place:p.place,tz:p.tz,tzKey:p.tzKey}}:{ok:false,msg:'place'};}
 function commitCard(k){const r=readCard(k);
 if(!r.ok){const hint={empty:'Say or type your '+k+'.',date:'Use e.g. 12 March 1998.',ampm:'Pick AM or PM, or say morning/evening.',place:'Which city were you born in?'}[r.msg];
 setStatus(hint);say('Please give me '+k+'.');return false;}
-if(k==='place'){fields.place=r.val.place;fields.tz=r.val.tz;}else fields[k]=r.val;
+if(k==='place'){fields.place=r.val.place;fields.tz=r.val.tz;fields.tzKey=r.val.tzKey;}else fields[k]=r.val;
 crackFlicker(secs[ORDER[cur]]);
 if(cur<ORDER.length-1){cur++;paintCards();}
-else{const sc=document.querySelector('#bform .success');if(sc)sc.classList.remove('folded');
-setStatus('Stars aligned.');setTimeout(()=>lockIn(),1200);}
+else{showConfirm();}
 return true;}
+function fmt24(t){return String(t.h).padStart(2,'0')+':'+String(t.min).padStart(2,'0');}
+function tzLabel(){const e=(fields.tz||0)+dstOffset(fields.tzKey,fields.dob);
+const s=e<0?'-':'+',a=Math.abs(e),hh=Math.floor(a),mm=Math.round((a-hh)*60);
+return 'UTC'+s+hh+(mm?':'+String(mm).padStart(2,'0'):'');}
+function showConfirm(){const sc=document.querySelector('#bform .success');if(sc)sc.classList.remove('folded');
+const MN=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const L=$('confirm__lines');
+if(L)L.innerHTML=`<b>${fields.name}</b> · ${fields.dob.d} ${MN[fields.dob.m]} ${fields.dob.y} · ${fmt24(fields.time)} · ${fields.place} (${tzLabel()})`;
+setStatus('Check it — ✓ to reveal, ↻ to restart.');say('Check your details. Confirm, or restart.');}
+const cyy=$('confirm__yes');if(cyy)cyy.addEventListener('click',()=>{
+const cb=document.querySelector('#bform .confirmbox');if(cb)cb.style.display='none';
+const sd=$('success__done');if(sd)sd.style.display='block';
+setStatus('Stars aligned.');setTimeout(()=>lockIn(),1200);});
+const cnn=$('confirm__no');if(cnn)cnn.addEventListener('click',()=>resetFlow());
+function resetFlow(){fields={name:null,dob:null,time:null,place:null,tz:null,tzKey:null};chipAP=null;setChips(null);
+['f_name','f_dob','f_time','f_place'].forEach(id=>{const el=$(id);if(el)el.value='';});
+const cb=document.querySelector('#bform .confirmbox');if(cb)cb.style.display='';
+const sd=$('success__done');if(sd)sd.style.display='none';
+const sc=document.querySelector('#bform .success');if(sc)sc.classList.add('folded');
+cur=0;paintCards();setStatus('Start over — name first.');}
 function handleField(k,text){const upd=parseDetails(text);setEcho('“'+text+'”');
 const MN=['','January','February','March','April','May','June','July','August','September','October','November','December'];
 if(k==='name'&&upd.name)$('f_name').value=upd.name;
@@ -703,8 +735,14 @@ const seed=`${fields.name}|${fields.dob.y}-${fields.dob.m}-${fields.dob.d}|${pro
 window.BIGCATseed=seed;window.BIGCATprof=prof;
 const res=$('result');
 if(res){res.style.display='block';res.style.cursor='pointer';res.title='Tap to replay your stars';
-res.innerHTML=`<b>${fields.name}</b> · ${prof.nak} (pada ${prof.pada})<br>Moon sign ${prof.rashi} · Lord ${prof.lord}${prof.borderline?'<br><i>Near a cusp — verify with exact ephemeris.</i>':''}<br>by Lustersourav<br><span style="opacity:.6">↻ tap to replay your stars</span>`;
-res.onclick=()=>{try{const bp=window.BIGCATprof||{};if(window.BIGCAT)window.BIGCAT.revealPersonalSky(window.BIGCATseed,bp.nak||'',bp.nakIdx||0);say('Showing your star again.');}catch(e){}};}
+const MN2=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const heard=`${fields.dob.d} ${MN2[fields.dob.m]} ${fields.dob.y} · ${fmt24(fields.time)} · ${fields.place} (${tzLabel()})`;
+res.innerHTML=`<b>${fields.name}</b> · ${prof.nak} (pada ${prof.pada})<br>Moon sign ${prof.rashi} · Lord ${prof.lord}${prof.borderline?'<br><i>Near a cusp — verify with exact ephemeris.</i>':''}<br><span style="opacity:.75">Heard: ${heard}</span><br>by Lustersourav<br><span style="opacity:.6">↻ tap to replay</span> · <span id="res__edit" style="opacity:.6;text-decoration:underline">✎ correct details</span>`;
+res.onclick=()=>{try{const bp=window.BIGCATprof||{};if(window.BIGCAT)window.BIGCAT.revealPersonalSky(window.BIGCATseed,bp.nak||'',bp.nakIdx||0);say('Showing your star again.');}catch(e){}};
+const re=$('res__edit');if(re)re.addEventListener('click',e=>{e.stopPropagation();reopenCards();});}
+function reopenCards(){const l=$('loader');if(l){l.style.display='table';l.classList.remove('loader--out');}
+const res2=$('result');if(res2)res2.style.display='none';
+cur=0;paintCards();setStatus('Correct any card, then confirm again.');say('Correct any card, then confirm.');}
 setStatus('Stars aligned. Look up.');setEcho('');
 say(`Your birth star is ${prof.nak}, pada ${prof.pada}. Moon sign ${prof.rashi}.`);
 try{$('loader__cta').click();}catch(e){}
