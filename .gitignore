@@ -1,0 +1,8 @@
+# local-only: never shipped to GitHub
+backup/
+models/
+# tooling / OS noise
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
