@@ -475,10 +475,14 @@ const low=' '+text.toLowerCase().replace(/(\d)\.(\d)/g,'$1<DOT>$2').replace(/[,?
 let m=low.match(/(?:my name is|i am|this is|call me)\s+([a-z ]+?)(?=\s+(?:born|birth|date|time|at|on|in|$))/);
 if(m&&m[1].trim())f.name=cap(m[1].trim().split(/\s+/).slice(0,3).join(' '));
 m=low.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\s+(\d{4})/);
-if(m){f.dob={d:+m[1],m:MONTHS[m[2].slice(0,3)],y:+m[3]};}
+if(m){const dd=+m[1],mm=MONTHS[m[2].slice(0,3)],yy=+m[3];
+const dim=[0,31,((yy%4===0&&yy%100!==0)||yy%400===0)?29:28,31,30,31,30,31,31,30,31,30,31];
+if(yy>=1800&&yy<=2100&&dd>=1&&dd<=dim[mm])f.dob={d:dd,m:mm,y:yy};}
 else{m=low.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
-if(m){let y=+m[3];if(y<100)y=y>30?1900+y:2000+y;f.dob={d:+m[1],m:+m[2],y};}}
-m=null;{const tre=/(\d{1,2})(?:(?::|\.|\-)(\d{2})| (\d{2})(?=\s))?\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night)/g;
+if(m){let y=+m[3];if(y<100)y=y>30?1900+y:2000+y;const dd=+m[1],mm=+m[2];
+const dim=[0,31,((y%4===0&&y%100!==0)||y%400===0)?29:28,31,30,31,30,31,31,30,31,30,31];
+if(mm>=1&&mm<=12&&dd>=1&&dd<=dim[mm]&&y>=1800&&y<=2100)f.dob={d:dd,m:mm,y};}}
+m=null;const relQ=/\b(quarter|half)\b/.test(low);if(!relQ){const tre=/(\d{1,2})(?:(?::|\.|\-)(\d{2})| (\d{2})(?=\s))?\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night)/g;
 let tm=null,mm=null;
 while((mm=tre.exec(low))){if(mm.index>0&&/\d/.test(low[mm.index-1]))continue;
 const raw4=(mm[0].match(/^\d{4}/)||[])[0];if(raw4&&+raw4>=1900)continue;
@@ -487,7 +491,7 @@ let ap=null;if(mark[0]==='a'||mark.includes('morning'))ap='AM';else if(mark[0]==
 if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h<12)h+=12;
 if(h0>=1&&ap&&!(ap==='AM'&&h0>12)&&min<=59){tm={h,min,ap};break;}}
 if(tm)f.time=tm;}
-if(!f.time){const b=low.match(/(?:^|[^\d])(\d{3,4})\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night)/);
+if(!f.time&&!relQ){const b=low.match(/(?:^|[^\d])(\d{3,4})\s*(a\.?m\.?|p\.?m\.?|in the morning|in the evening|in the night|at night)/);
 if(b){const n=+b[1];if(n<=1259){let h=Math.floor(n/100),min=n%100;const mark=b[2].replace(/\./g,'');const h0=h;
 let ap=null;if(mark[0]==='a'||mark.includes('morning'))ap='AM';else ap='PM';
 if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h<12)h+=12;
